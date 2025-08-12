@@ -8,3 +8,4 @@ dependencies:
       - gymnasium==1.2.0
       - tyro==0.9.28
       - tensorboard==2.20.0
+      - matplotlib==3.10.5

@@ -37,6 +37,8 @@ class SimbaSACConfig(AgentConfig):
     batch_size: int = 256
     # timestep to start learning
     learning_starts: int = int(5e3)
+    # Number of updates per interaction step
+    updates_per_interaction_step: int = 2
 
     # the number of policy residual blocks
     policy_num_blocks: int = 1
@@ -55,17 +57,11 @@ class SimbaSACConfig(AgentConfig):
     q_lr: float = 1e-4
     # the weight decay of Q network optimizer
     q_weight_decay: float = 1e-2
+    # whether use clipping double Q-learning (When env has termination use it)
+    use_cdq: bool = False
 
-    # the frequency of training policy
-    policy_frequency: int = 2
-    # the frequency of updates for the target networks
-    target_network_frequency: int = 1
     # entropy regularization coefficient
     ent_coef: float = 0.2
     # automatic tuning of the entropy coefficient
     autotune: bool = True
 
-if __name__ == '__main__':
-    import tyro
-    args: SACConfig = tyro.cli(SACConfig)
-    print(args)

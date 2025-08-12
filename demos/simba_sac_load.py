@@ -3,8 +3,7 @@ SimbaSAC (from simba)
 启动脚本请用: bash ./benchmarks/simba_sac_run_experiments.py
 查看可用参数: python ./demos/simba_sac.py --help
 单独启动训练:
-python ./demos/simba_sac.py --env.env-type gymnasium --env.env-name Hopper-v4 --agent.num-env-steps 100000 --agent.verbose 2 
-python ./demos/simba_sac.py --env.env-type dmc --env.env-name walker-walk --agent.num-env-steps 100000 --agent.verbose 2 --agent.device cuda:1
+python ./demos/simba_sac_load.py --env.env-type gymnasium --env.env-name Humanoid-v4
 """
 import sys
 from pathlib import Path
@@ -20,45 +19,33 @@ from katarl2.common.video_process import cvt_to_gif
 from pprint import pprint
 
 @dataclass
-class SimbaEnvConfig(EnvConfig):
-    max_episode_steps: int = 1000
-    action_repeat: int = 2
-    rescale_action: bool = True
-
-@dataclass
 class Args:
     agent: SimbaSACConfig
-    env: SimbaEnvConfig
+    env: EnvConfig
     logger: LogConfig
+    total_timesteps: int = int(1e6)
     debug: bool = False
 
 if __name__ == '__main__':
-    """ Preprocess """
     args: Args = tyro.cli(Args)
     path_manager.build_path_logs(args.agent, args.env, args.debug)
-    envs, eval_envs = make_envs(args.env)
-    logger = get_tensorboard_writer(args.logger, args)
-
-    """ Train """
-    print("[INFO] Start Training, with args:")
-    pprint(args)
-    agent = SimbaSAC(cfg=args.agent, envs=envs, eval_envs=eval_envs, env_cfg=args.env, logger=logger)
-    agent.learn()
-    path_ckpt = agent.save()
-    del agent
-    envs.close()
-    print("[INFO] Finish Training.")
+    envs = make_envs(args.env)
 
     """ Eval """
     print("[INFO] Start Evaluation.")
-    agent = SimbaSAC.load(path_ckpt, args.agent.device)
+    agent = SimbaSAC.load("/data/user/wutianyang/Coding/KataRL2/logs/sac/simba_continuous_mlp/Humanoid-v4__gymnasium/seed_2_2/20250811-234639/ckpts/sac-994999.pkl", args.agent.device)
     args.env.env_num = 1
     args.env.capture_video = True
-    agent.cfg.num_eval_episodes = 1
-    _, eval_envs = make_envs(args.env)
-    agent.eval_envs = eval_envs
-    agent.eval()
+    envs = make_envs(args.env)
 
+    obs = envs.reset()[0]
+    for i in range(int(1e5)):
+        action = agent.predict(obs)
+        obs, rewards, terminations, truncations, infos = envs.step(action)
+        if terminations.any() or truncations.any():
+            envs.step(envs.action_space.sample())  # 再执行一步以保存视频
+            break
+    
     """ Log Video """
     if args.logger.use_swanlab:
         path_videos = path_manager.PATH_LOGS / 'videos'

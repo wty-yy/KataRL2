@@ -13,18 +13,22 @@ if __name__ == '__main__':
     cfg.env_num = 'Ant-v4'
     cfg.env_num = 3
     cfg.seed = 0
-    envs = make_envs(cfg)
+    envs, _ = make_envs(cfg)
     envs.reset()
     act = np.full(envs.action_space.shape, 0.5)
     start_time = time.time()
+    total_reward = 0
     for i in range(10000):
         obs, rewards, terminations, truncations, infos = envs.step(act)
+        total_reward += rewards.mean()
 
         real_next_obs = obs.copy()
-        for idx, trunc in enumerate(truncations):  # 0.0005060934951298475s
+        for idx, trunc in enumerate(truncations):
             if trunc:
                 real_next_obs[idx] = infos["final_obs"][idx]
 
         # if terminations.any() or truncations.any():
         #     break
-    print((time.time() - start_time) / i)
+    print((time.time() - start_time) / i)  # 0.0005393951269898108
+    print(total_reward)
+    envs.close()

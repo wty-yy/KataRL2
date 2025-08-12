@@ -34,10 +34,16 @@ class RunningMeanStd:
         self.update_from_moments(other.mean, other.var, other.count)
 
     def update(self, arr: np.ndarray) -> np.ndarray:
+        expand_dim = False
+        if arr.ndim == 1:
+            expand_dim = True
+            arr = arr[None, :]
         batch_mean = np.mean(arr, axis=0)
         batch_var = np.var(arr, axis=0)
         batch_count = arr.shape[0]
         self.update_from_moments(batch_mean, batch_var, batch_count)
+        if expand_dim:
+            arr = arr[0]
         return self.normalize(arr)
 
     def update_from_moments(self, batch_mean: np.ndarray, batch_var: np.ndarray, batch_count: float) -> None:

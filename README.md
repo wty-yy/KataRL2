@@ -15,6 +15,8 @@
 4. 支持`swanlab`, `wandb`训练曲线上传
 5. 环境使用`gymnasium`标准, 易于添加自定义环境
 6. 相比`cleanrl`, `stable baselines3`更加高效, 减少冗余信息输出并减少嵌套代码
+7. 用python脚本方便地启动`benchmark`测试
+8. 保持日志文件路径规范, 自动读取tensorboard日志整理绘制曲线图
 
 ## 支持算法
 | 算法 | `Box` | `Discrete` | `MultiDiscrete` | 网络结构 |

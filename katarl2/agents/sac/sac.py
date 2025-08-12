@@ -16,24 +16,38 @@ from katarl2.common import path_manager
 from katarl2.agents.common.buffers import ReplayBuffer
 from typing import Optional
 from katarl2.common.utils import cvt_string_time
+from katarl2.envs.env_cfg import EnvConfig
 
 class SAC:
     def __init__(
-            self,
+            self, *,
             cfg: SACConfig,
             envs: Optional[gym.vector.SyncVectorEnv] = None,
+            eval_envs: Optional[gym.vector.SyncVectorEnv] = None,
+            env_cfg: Optional[EnvConfig] = None,
             logger: Optional[SummaryWriter] = None,
         ):
         """
         Args:
             cfg: SACConfig, SAC算法配置文件
             envs: Optional[gym.vector.SyncVectorEnv], 训练所需的交互环境
+            eval_envs: Optional[gym.vector.SyncVectorEnv], 评估所需的环境
+            env_cfg: Optional[EnvConfig], 环境配置文件
             logger: Optional[SummaryWriter], 训练记录的日志信息
         """
         self.cfg = cfg
         self.envs = envs
+        self.eval_envs = eval_envs
+        self.env_cfg = env_cfg
         self.logger = logger
         self.device = cfg.device if torch.cuda.is_available() and 'cuda' in cfg.device else 'cpu'
+
+        if envs is not None:
+            # 将环境的必要参数保存到agent配置中, 便于模型加载时使用
+            cfg.num_envs = envs.num_envs
+            cfg.obs_space = envs.single_observation_space
+            cfg.act_space = envs.single_action_space
+
         self.obs_space: gym.Space = cfg.obs_space
         self.act_space: gym.Space = cfg.act_space
         assert isinstance(self.act_space, gym.spaces.Box), f"[ERROR] Only continuous action space is supported, but current action space={type(self.act_space)}"
@@ -90,10 +104,10 @@ class SAC:
     def predict(self, obs):
         self.actor.eval()
         with torch.no_grad():
-            actions = self.actor.get_action(torch.Tensor(obs).to(self.device))[0]
+            actions = self.actor.get_action(torch.Tensor(obs).to(self.device), train=False)[0]
         return actions.detach().cpu().numpy()
 
-    def learn(self, total_timesteps):
+    def learn(self):
         cfg, envs, logger = self.cfg, self.envs, self.logger
         self.actor.train()
         self.qf1.train()
@@ -105,10 +119,10 @@ class SAC:
         start_time = time.time()
         last_verbose_time = time.time()
         obs, _ = envs.reset()
+        cfg.num_interaction_steps = cfg.num_env_steps // self.env_cfg.action_repeat
+        bar = range(cfg.num_interaction_steps)
         if cfg.verbose == 2:
-            bar = tqdm(range(total_timesteps))
-        else:
-            bar = range(total_timesteps)
+            bar = tqdm(bar)
         for self.global_step in bar:
             # put action logic here
             if self.global_step < cfg.learning_starts:
@@ -119,13 +133,13 @@ class SAC:
 
             next_obs, rewards, terminations, truncations, infos = envs.step(actions)
 
-            if "final_info" in infos:
-                final_info = infos['final_info']
-                mask = final_info['_episode']
-                if cfg.verbose == 2:
-                    bar.set_description(f"episodic_return={final_info['episode']['r'][mask].mean().round(2)}")
-                logger.add_scalar("charts/episodic_return", final_info["episode"]["r"][mask].mean(), self.global_step)
-                logger.add_scalar("charts/episodic_length", final_info["episode"]["l"][mask].mean(), self.global_step)
+            # if "final_info" in infos:
+            #     final_info = infos['final_info']
+            #     mask = final_info['_episode']
+            #     if cfg.verbose == 2:
+            #         bar.set_description(f"episodic_return={final_info['episode']['r'][mask].mean().round(2)}")
+            #     logger.add_scalar("charts/episodic_return", final_info["episode"]["r"][mask].mean(), self.global_step)
+            #     logger.add_scalar("charts/episodic_length", final_info["episode"]["l"][mask].mean(), self.global_step)
 
             # save data to reply buffer; handle `final_obs`
             real_next_obs = next_obs.copy()
@@ -190,7 +204,8 @@ class SAC:
                     for param, target_param in zip(self.qf2.parameters(), self.qf2_target.parameters()):
                         target_param.data.copy_(cfg.tau * param.data + (1 - cfg.tau) * target_param.data)
 
-                if self.global_step % 100 == 0:
+                """ Logging """
+                if self.global_step % cfg.log_per_interaction_step == 0:
                     logger.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), self.global_step)
                     logger.add_scalar("losses/qf2_values", qf2_a_values.mean().item(), self.global_step)
                     logger.add_scalar("losses/qf1_loss", qf1_loss.item(), self.global_step)
@@ -206,9 +221,31 @@ class SAC:
                         logger.add_scalar("losses/ent_coef_loss", ent_coef_loss.item(), self.global_step)
                     if cfg.verbose == 1 and time.time() - last_verbose_time > 10:
                         last_verbose_time = time.time()
-                        time_left = (total_timesteps - self.global_step) / SPS
-                        print(f"[INFO] {self.global_step}/{total_timesteps} steps, SPS: {SPS}, [{cvt_string_time(time_used)}<{cvt_string_time(time_left)}]")
+                        time_left = (cfg.num_interaction_steps - self.global_step) / SPS
+                        print(f"[INFO] {self.global_step}/{cfg.num_interaction_steps} steps, SPS: {SPS}, [{cvt_string_time(time_used)}<{cvt_string_time(time_left)}]")
 
+            """ Evaluating """
+            if self.global_step % cfg.eval_per_interaction_step == 0:
+                self.eval()
+
+    def eval(self):
+        episodic_returns = []
+        episodic_lens = []
+
+        obs, _ = self.eval_envs.reset()
+        while len(episodic_returns) < self.cfg.num_eval_episodes:
+            action = self.predict(obs)
+            obs, rewards, terminations, truncations, infos = self.eval_envs.step(action)
+            
+            if "final_info" in infos:
+                final_info = infos['final_info']
+                mask = final_info['_episode']
+                episodic_returns.extend(final_info['episode']['r'][mask].tolist())
+                episodic_lens.extend(final_info['episode']['l'][mask].tolist())
+
+        if self.logger is not None:
+            self.logger.add_scalar("charts/episodic_return", np.mean(episodic_returns), self.global_step)
+            self.logger.add_scalar("charts/episodic_length", np.mean(episodic_lens), self.global_step)
 
     def save(self, path='default') -> Path:
         to_cpu = lambda data: {k: v.to('cpu') for k, v in data.items()}
@@ -231,7 +268,7 @@ class SAC:
     @classmethod
     def load(cls, path, device='cpu'):
         data = torch.load(str(path), map_location=device, weights_only=False)
-        self = cls(data['config'])
+        self = cls(cfg=data['config'])
         self.actor.load_state_dict(data['model']['actor'])
         self.qf1.load_state_dict(data['model']['qf1'])
         self.qf2.load_state_dict(data['model']['qf2'])

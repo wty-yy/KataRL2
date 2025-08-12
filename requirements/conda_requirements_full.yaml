@@ -5,8 +5,11 @@ dependencies:
   - python=3.11.13
   - pytorch=2.7.1
   - pip:
-      - gymnasium==1.2.0
+      - matplotlib==3.10.5
       - tyro==0.9.28
       - tensorboard==2.20.0
+      - gymnasium==1.2.0
       - gymnasium[mujoco]
       - gymnasium[other]
+      - dm-control==1.0.31
+      - shimmy==2.0.0

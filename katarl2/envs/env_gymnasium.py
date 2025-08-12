@@ -38,29 +38,19 @@ class SeedWrapper(gym.Wrapper):
         self.first_reset = False
         return obs, info
 
-def make_gymnasium_env_fn(cfg: EnvConfig):
+def make_gymnasium_env_from_cfg(cfg: EnvConfig):
     if cfg.env_name not in ENV_NAME:
         raise ValueError(f"Unsupported environment name: {cfg.env_name}. Supported names: {ENV_NAME}")
     if cfg.capture_video:
         PATH_VIDEOS = path_manager.PATH_LOGS / 'videos'
         # PATH_VIDEOS.mkdir(parents=True, exist_ok=True)
 
-    def thunk():
-        if cfg.capture_video:
-            env = gym.make(cfg.env_name, render_mode='rgb_array')
-            env = gym.wrappers.RecordVideo(env, str(PATH_VIDEOS))
-        else:
-            env = gym.make(cfg.env_name)
-        env = gym.wrappers.RecordEpisodeStatistics(env)
-        env = SeedWrapper(env, cfg.seed)
-        env.action_space.seed(cfg.seed)
-        return env
-
-    return thunk
-
-def update_gymnasium_env_config(cfg: EnvConfig):
-    if cfg.env_name in MUJOCO_PY_NAME:
-        cfg.max_episode_steps = 1000
-        cfg.action_repeat = 1
+    if cfg.capture_video:
+        env = gym.make(cfg.env_name, render_mode='rgb_array')
+        env = gym.wrappers.RecordVideo(env, str(PATH_VIDEOS))
     else:
-        raise Exception(f"[ERROR] Unsupported environment name: {cfg.env_name} to update env_config.")
+        env = gym.make(cfg.env_name)
+    env = gym.wrappers.RecordEpisodeStatistics(env)
+    env = SeedWrapper(env, cfg.seed)
+    env.action_space.seed(cfg.seed)
+    return env

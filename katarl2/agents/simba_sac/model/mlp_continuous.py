@@ -29,7 +29,7 @@ class SoftQNetwork(nn.Module):
         return x
 
 LOG_STD_MAX = 2
-LOG_STD_MIN = -5
+LOG_STD_MIN = -10
 
 class Actor(nn.Module):
     def __init__(
@@ -72,9 +72,11 @@ class Actor(nn.Module):
 
         return mean, log_std
 
-    def get_action(self, x):
+    def get_action(self, x, train: bool = True):
         mean, log_std = self(x)
         std = log_std.exp()
+        if not train:
+            std = torch.full_like(std, 1e-9)
         normal = torch.distributions.Normal(mean, std)
         x_t = normal.rsample()  # for reparameterization trick (mean + std * N(0,1))
         y_t = torch.tanh(x_t)

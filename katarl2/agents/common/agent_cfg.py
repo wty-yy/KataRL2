@@ -21,10 +21,24 @@ class AgentConfig:
     device: str = 'cuda'
     
     """ Environment (setup after envs created) """
-    # Don't setup these parameters in CLI
+    # Don't setup these params in CLI
     num_envs: Any = None
     obs_space: Any = None
     act_space: Any = None
+
+    """ Logger """
+    # Log every n interaction steps
+    log_per_interaction_step: int = 2000
+
+    """ Training / Evaluating """
+    # Total environment steps
+    num_env_steps: int = int(1e6)
+    # Total agent interaction steps (Don't setup this param in CLI)
+    num_interaction_steps: Any = None
+    # Evaluation in learn() function
+    eval_per_interaction_step: int = 10000
+    # Number of evaluation episodes
+    num_eval_episodes: int = 10
 
     """ hyper-parameters (each algorithm has diff params, here are some examples) """
     # the replay memory buffer size

@@ -6,12 +6,14 @@ PATH_NOHUP_OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # 配置任务
 tasks = [
-    # (env_name, cuda_list, seed_list)
-    ("Hopper-v4",          [0, 0, 0], [0, 1, 2]),
-    ("Ant-v4",             [1, 1, 1], [0, 1, 2]),
-    # ("HalfCheetah-v4",     [2, 2, 2], [0, 1, 2]),
-    # ("HumanoidStandup-v4", [3, 3, 3], [0, 1, 2]),
-    ("Humanoid-v4",        [2, 2, 2], [0, 1, 2]),
+    # (env_type, env_name, cuda_list, seed_list)
+    # ("gymnasium", "Hopper-v4",          [0], [0]),
+    # ("gymnasium", "Ant-v4",             [3, 3, 3], [0, 1, 2]),
+    # ("gymnasium", "HalfCheetah-v4",     [0, 0, 0], [0, 1, 2]),
+    # ("gymnasium", "HumanoidStandup-v4", [1, 1, 1], [0, 1, 2]),
+    # ("gymnasium", "Humanoid-v4",        [2, 2, 2], [0, 1, 2]),
+    ("dmc", "walker-walk",            [0, 0, 0], [0, 1, 2]),
+    ("dmc", "humanoid-walk",          [1, 1, 1], [0, 1, 2]),
 ]
 
 # 额外参数（可选）
@@ -24,7 +26,6 @@ extra_args = [
 # 基础命令
 base_cmd = [
     "python", "-u", "demos/sac.py",
-    "--env.env-type", "gymnasium"
 ]
 
 def run_command(cmd):
@@ -33,9 +34,10 @@ def run_command(cmd):
 
 if __name__ == "__main__":
     total = 0
-    for env_name, cuda_list, seed_list in tasks:
+    for env_type, env_name, cuda_list, seed_list in tasks:
         for cuda_id, seed in zip(cuda_list, seed_list):
             cmd = base_cmd + [
+                "--env.env-type", env_type,
                 "--env.env-name", env_name,
                 "--env.seed", str(seed),
                 "--agent.seed", str(seed),

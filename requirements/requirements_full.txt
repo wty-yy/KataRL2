@@ -4,3 +4,6 @@ gymnasium[mujoco]
 gymnasium[other]
 tyro
 tensorboard
+matplotlib
+dm_control
+shimmy

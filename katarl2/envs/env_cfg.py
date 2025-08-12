@@ -11,19 +11,59 @@ class EnvConfig:
         # gymnasium
         'Hopper-v4', 'Ant-v4', 'HalfCheetah-v4', 'HumanoidStandup-v4', 'Humanoid-v4',
         # dmc
+        'acrobot-swingup',
+        'cartpole-balance',
+        'cartpole-balance_sparse',
+        'cartpole-swingup',
+        'cartpole-swingup_sparse',
+        'cheetah-run',
+        'finger-spin',
+        'finger-turn_easy',
+        'finger-turn_hard',
+        'fish-swim',
+        'hopper-hop',
+        'hopper-stand',
+        'pendulum-swingup',
+        'quadruped-walk',
+        'quadruped-run',
+        'reacher-easy',
+        'reacher-hard',
+        'walker-stand',
+        'walker-walk',
+        'walker-run',
+
+        "cartpole-balance_sparse",
+        "cartpole-swingup_sparse",
+        "ball_in_cup-catch",
+        "finger-spin",
+        "finger-turn_easy",
+        "finger-turn_hard",
+        "reacher-easy",
+        "reacher-hard",
+
+        'humanoid-stand',
         'humanoid-walk',
+        'humanoid-run',
+        'dog-stand',
+        'dog-walk',
+        'dog-run',
+        'dog-trot'
     ]
-    # Number of parallel environments
+    # Number of parallel environments (Train)
     env_num: int = 1
+    # Number of parallel environments (Evaluate)
+    eval_env_num: int = 1
     # Whether to capture video (checkout `PATH_LOGS/video` folder)
     capture_video: bool = False
     # Random seed for environment
     seed: int = 42
-    """ Below params update by env """
+    """ Below params update by algo """
     # Max episode steps (optional)
     max_episode_steps: Optional[int] = None
-    # Action repeat (optional)
-    action_repeat: Optional[int] = None
+    # Action repeat
+    action_repeat: int = 1
+    # Rescale action space to (-1, 1) (optional)
+    rescale_action: Optional[bool] = None
 
 def get_env_name(cfg: EnvConfig) -> str:
     """ eg: 'Hoop-v4__gymnasium' """
