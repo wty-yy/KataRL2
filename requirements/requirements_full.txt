@@ -1,0 +1,6 @@
+torch
+gymnasium==1.2.0
+gymnasium[mujoco]
+gymnasium[other]
+tyro
+tensorboard

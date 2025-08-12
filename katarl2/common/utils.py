@@ -12,6 +12,16 @@ def flatten_dict(d, prefix="") -> dict:
             flatten[prefix+'.'+k if len(prefix) else k] = v
     return flatten
 
+def cvt_string_time(t_sec) -> str:
+    """ 将时间t_sec转为 hour:minute:second """
+    t_sec = int(t_sec)  # 取整秒
+    hours = t_sec // 3600
+    minutes = (t_sec % 3600) // 60
+    seconds = t_sec % 60
+    if hours > 0:
+        return f"{hours:02}:{minutes:02}:{seconds:02}"
+    return f"{minutes:02}:{seconds:02}"
+
 if __name__ == '__main__':
     """ debug flatten_dict """
     # import tyro
@@ -25,7 +35,5 @@ if __name__ == '__main__':
     # print(cfg)
     # print(flatten_dict(cfg))
 
-    """ debug apply_func_dict """
-    d = {'a': 1, 'b': 3, 'c': {'aa': 2, 'bb': 4}}
-    print(apply_func_for_dict(d, lambda x: x + 3))
-    print(flatten_dict(d))
+    print(cvt_string_time(3601))
+    print(cvt_string_time(200))

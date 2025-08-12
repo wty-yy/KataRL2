@@ -1,4 +1,4 @@
-""" From cleanrl.sac_continuous_action.py """
+""" From https://github.com/SonyResearch/simba """
 import torch
 from torch import optim
 import torch.nn.functional as F
@@ -10,28 +10,34 @@ from tqdm import tqdm
 import gymnasium as gym
 from pathlib import Path
 from torch.utils.tensorboard import SummaryWriter
-from katarl2.agents.sac.sac_cfg import SACConfig
-from katarl2.agents.sac.model.mlp_continuous import Actor, SoftQNetwork
+from katarl2.agents.simba_sac.simba_sac_cfg import SimbaSACConfig
+from katarl2.agents.simba_sac.model.mlp_continuous import Actor, SoftQNetwork
 from katarl2.common import path_manager
 from katarl2.agents.common.buffers import ReplayBuffer
 from typing import Optional
 from katarl2.common.utils import cvt_string_time
+from katarl2.agents.common.running_mean_std import RunningMeanStd
+from katarl2.envs.env_cfg import EnvConfig
+from katarl2.agents.common.utils import calc_gamma
 
-class SAC:
+class SimbaSAC:
     def __init__(
-            self,
-            cfg: SACConfig,
+            self, *,
+            cfg: SimbaSACConfig,
             envs: Optional[gym.vector.SyncVectorEnv] = None,
+            env_cfg: Optional[EnvConfig] = None,
             logger: Optional[SummaryWriter] = None,
         ):
         """
         Args:
-            cfg: SACConfig, SAC算法配置文件
+            cfg: SimbaSACConfig, SAC算法配置文件
             envs: Optional[gym.vector.SyncVectorEnv], 训练所需的交互环境
+            env_cfg: Optional[EnvConfig], 环境配置文件
             logger: Optional[SummaryWriter], 训练记录的日志信息
         """
         self.cfg = cfg
         self.envs = envs
+        self.env_cfg = env_cfg
         self.logger = logger
         self.device = cfg.device if torch.cuda.is_available() and 'cuda' in cfg.device else 'cpu'
         self.obs_space: gym.Space = cfg.obs_space
@@ -45,18 +51,18 @@ class SAC:
         torch.backends.cudnn.deterministic = True
 
         """ Model """
-        self.actor = Actor(self.obs_space, self.act_space).to(self.device)
-        self.qf1 = SoftQNetwork(self.obs_space, self.act_space).to(self.device)
-        self.qf2 = SoftQNetwork(self.obs_space, self.act_space).to(self.device)
-
-        self.qf1_target = SoftQNetwork(self.obs_space, self.act_space).to(self.device)
-        self.qf2_target = SoftQNetwork(self.obs_space, self.act_space).to(self.device)
+        self.actor = Actor(self.obs_space, self.act_space, cfg.policy_num_blocks, cfg.policy_hidden_dim).to(self.device)
+        create_q_net = lambda: SoftQNetwork(self.obs_space, self.act_space, cfg.q_num_blocks, cfg.q_hidden_dim).to(self.device)
+        self.qf1 = create_q_net()
+        self.qf2 = create_q_net()
+        self.qf1_target = create_q_net()
+        self.qf2_target = create_q_net()
         self.qf1_target.load_state_dict(self.qf1.state_dict())
         self.qf2_target.load_state_dict(self.qf2.state_dict())
 
         """ Optimizer """
-        self.q_optimizer = optim.Adam(list(self.qf1.parameters()) + list(self.qf2.parameters()), lr=cfg.q_lr)
-        self.actor_optimizer = optim.Adam(list(self.actor.parameters()), lr=cfg.policy_lr)
+        self.q_optimizer = optim.Adam(list(self.qf1.parameters()) + list(self.qf2.parameters()), lr=cfg.q_lr, weight_decay=cfg.q_weight_decay)
+        self.actor_optimizer = optim.Adam(list(self.actor.parameters()), lr=cfg.policy_lr, weight_decay=cfg.policy_weight_decay)
 
         """ Auto entropy tuning """
         if cfg.autotune:
@@ -84,6 +90,9 @@ class SAC:
             self.PATH_CKPTS = PATH_LOGS / "ckpts"
             self.PATH_CKPTS.mkdir(exist_ok=True, parents=True)
 
+        """ Running statistics normalization """
+        self.rms = RunningMeanStd(self.obs_space.shape)
+
         self.train_steps = 0
         self.global_step = 0
     
@@ -101,10 +110,16 @@ class SAC:
         self.qf1_target.train()
         self.qf2_target.train()
 
+        if cfg.gamma == 'auto':
+            # gamma value is set with a heuristic from TD-MPCv2
+            cfg.gamma = calc_gamma(self.env_cfg.max_episode_steps, self.env_cfg.action_repeat)
+
         # start the game
         start_time = time.time()
         last_verbose_time = time.time()
         obs, _ = envs.reset()
+        obs = self.rms.update(obs)
+
         if cfg.verbose == 2:
             bar = tqdm(range(total_timesteps))
         else:
@@ -118,6 +133,7 @@ class SAC:
                 actions = actions.detach().cpu().numpy()
 
             next_obs, rewards, terminations, truncations, infos = envs.step(actions)
+            next_obs = self.rms.update(next_obs)
 
             if "final_info" in infos:
                 final_info = infos['final_info']
@@ -131,7 +147,7 @@ class SAC:
             real_next_obs = next_obs.copy()
             for idx, trunc in enumerate(truncations):
                 if trunc:
-                    real_next_obs[idx] = infos["final_obs"][idx]
+                    real_next_obs[idx] = self.rms.update(infos["final_obs"][idx])
             self.rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
 
             # CRUCIAL step easy to overlook
@@ -218,7 +234,8 @@ class SAC:
                 'actor': to_cpu(self.actor.state_dict()),
                 'qf1': to_cpu(self.qf1.state_dict()),
                 'qf2': to_cpu(self.qf2.state_dict())
-            }
+            },
+            'rms': {**self.rms.get_statistics()}
         }
         if path == 'default':
             path_ckpt = self.PATH_CKPTS / f"sac-{self.train_steps}.pkl"
@@ -231,9 +248,10 @@ class SAC:
     @classmethod
     def load(cls, path, device='cpu'):
         data = torch.load(str(path), map_location=device, weights_only=False)
-        self = cls(data['config'])
+        self = cls(cfg=data['config'])
         self.actor.load_state_dict(data['model']['actor'])
         self.qf1.load_state_dict(data['model']['qf1'])
         self.qf2.load_state_dict(data['model']['qf2'])
-        print(f"[INFO] Load SAC model from {path} successfully.")
+        self.rms.load_statistics(data['rms'])
+        print(f"[INFO] Load SimbaSAC model from {path} successfully.")
         return self

@@ -1,27 +1,26 @@
 """
-BasicSAC (from cleanrl)
-启动脚本请用: bash ./benchmarks/sac_run_experiments.py
-查看可用参数: python ./demos/sac.py --help
+SimbaSAC (from simba)
+启动脚本请用: bash ./benchmarks/simba_sac_run_experiments.py
+查看可用参数: python ./demos/simba_sac.py --help
 单独启动训练:
-python ./demos/sac.py --env.env-type gymnasium --env.env-name Hopper-v4 --total-timesteps 100000 --agent.verbose 2
+python ./demos/simba_sac.py --env.env-type gymnasium --env.env-name Hopper-v4 --total-timesteps 100000 --agent.verbose 2 
 """
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parents[1]))
 import tyro
 from dataclasses import dataclass
-from katarl2.agents import SAC, SACConfig
+from katarl2.agents import SimbaSAC, SimbaSACConfig
 from katarl2.envs.env_cfg import EnvConfig
 from katarl2.common.logger import LogConfig, get_tensorboard_writer
 from katarl2.envs.env_maker import make_envs
 from katarl2.common import path_manager
 from katarl2.common.video_process import cvt_to_gif
-import numpy as np
 from pprint import pprint
 
 @dataclass
 class Args:
-    agent: SACConfig
+    agent: SimbaSACConfig
     env: EnvConfig
     logger: LogConfig
     total_timesteps: int = int(1e6)
@@ -41,7 +40,7 @@ if __name__ == '__main__':
     """ Train """
     print("[INFO] Start Training, with args:")
     pprint(args)
-    agent = SAC(args.agent, envs, logger)
+    agent = SimbaSAC(cfg=args.agent, envs=envs, env_cfg=args.env, logger=logger)
     agent.learn(total_timesteps=args.total_timesteps)
     path_ckpt = agent.save()
     del agent
@@ -49,7 +48,7 @@ if __name__ == '__main__':
 
     """ Eval """
     print("[INFO] Start Evaluation.")
-    agent = SAC.load(path_ckpt, args.agent.device)
+    agent = SimbaSAC.load(path_ckpt, args.agent.device)
     args.env.env_num = 1
     args.env.capture_video = True
     envs = make_envs(args.env)

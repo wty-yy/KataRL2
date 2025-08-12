@@ -1,19 +1,19 @@
 from typing import Literal
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Union
 from katarl2.agents.common.agent_cfg import AgentConfig
 
 @dataclass
-class SACConfig(AgentConfig):
+class SimbaSACConfig(AgentConfig):
     # Algorithm name
     algo_name: Literal['SAC'] = 'SAC'
-    # Policy name for SAC
-    policy_name: Literal['Basic'] = 'Basic'
-    # Action type for SAC
+    # Policy name for SimbaSAC
+    policy_name: Literal['Simba'] = 'Simba'
+    # Action type for SimbaSAC
     action_type: Literal['continuous'] = 'continuous'
-    # Network name for SAC
+    # Network name for SimbaSAC
     network_name: Literal['MLP'] = 'MLP'
-    # Random seed for SAC
+    # Random seed for SimbaSAC
     seed: int = 42
     # Output train/eval details, level 0,1,2, message from low to high
     verbose: int = 0
@@ -29,18 +29,33 @@ class SACConfig(AgentConfig):
     """ hyper-parameters """
     # the replay memory buffer size
     buffer_size: int = int(1e6)
-    # the discount factor gamma
-    gamma: float = 0.99
+    # the discount factor gamma (auto is set with a heuristic from TD-MPCv2)
+    gamma: Union[float, Literal['auto']] = 'auto'
     # target smoothing coefficient
     tau: float = 0.005
     # the batch size of sample from the replay memory buffer
     batch_size: int = 256
     # timestep to start learning
     learning_starts: int = int(5e3)
+
+    # the number of policy residual blocks
+    policy_num_blocks: int = 1
+    # the hidden dimension of policy residual block
+    policy_hidden_dim: int = 128
     # the learning rate of the policy network optimizer
-    policy_lr: float = 3e-4
+    policy_lr: float = 1e-4
+    # the weight decay of the policy network optimizer
+    policy_weight_decay: float = 1e-2
+
+    # the number of Q network residual blocks
+    q_num_blocks: int = 2
+    # the hidden dimension of Q network residual block
+    q_hidden_dim: int = 512
     # the learning rate of Q network optimizer
-    q_lr: float = 1e-3
+    q_lr: float = 1e-4
+    # the weight decay of Q network optimizer
+    q_weight_decay: float = 1e-2
+
     # the frequency of training policy
     policy_frequency: int = 2
     # the frequency of updates for the target networks

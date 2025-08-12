@@ -1,4 +1,4 @@
 torch
-gymnasium
+gymnasium==1.2.0
 tyro
 tensorboard

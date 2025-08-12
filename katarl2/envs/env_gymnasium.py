@@ -1,6 +1,8 @@
 import gymnasium as gym
+from dataclasses import dataclass
+from typing import Literal
 from katarl2.envs.env_cfg import EnvConfig
-from katarl2.common.path_manager import path_manager
+from katarl2.common import path_manager
 from gymnasium.core import ObsType
 from typing import Any
 
@@ -11,6 +13,13 @@ MUJOCO_PY_NAME = [
 ENV_NAME = [
     *MUJOCO_PY_NAME
 ]
+
+@dataclass
+class GymEnvConfig(EnvConfig):
+    env_type: Literal['gymnasium'] = 'gymnasium'
+    env_name: Literal[
+        'Hopper-v4', 'Ant-v4', 'HalfCheetah-v4', 'HumanoidStandup-v4', 'Humanoid-v4'
+    ] = 'Hopper-v4'
 
 class SeedWrapper(gym.Wrapper):
     """ 自动将随机种子填入reset中 """
@@ -29,12 +38,12 @@ class SeedWrapper(gym.Wrapper):
         self.first_reset = False
         return obs, info
 
-def make_gymnaisum_env_fn(cfg: EnvConfig):
+def make_gymnasium_env_fn(cfg: EnvConfig):
     if cfg.env_name not in ENV_NAME:
         raise ValueError(f"Unsupported environment name: {cfg.env_name}. Supported names: {ENV_NAME}")
     if cfg.capture_video:
         PATH_VIDEOS = path_manager.PATH_LOGS / 'videos'
-        PATH_VIDEOS.mkdir(parents=True, exist_ok=True)
+        # PATH_VIDEOS.mkdir(parents=True, exist_ok=True)
 
     def thunk():
         if cfg.capture_video:
@@ -49,3 +58,9 @@ def make_gymnaisum_env_fn(cfg: EnvConfig):
 
     return thunk
 
+def update_gymnasium_env_config(cfg: EnvConfig):
+    if cfg.env_name in MUJOCO_PY_NAME:
+        cfg.max_episode_steps = 1000
+        cfg.action_repeat = 1
+    else:
+        raise Exception(f"[ERROR] Unsupported environment name: {cfg.env_name} to update env_config.")
