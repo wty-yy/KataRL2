@@ -215,17 +215,17 @@ class BaseBuffer(ABC):
         self.pos = 0
         self.full = False
 
-    def sample(self, batch_size: int):
+    def sample(self, batch_size: int, to_tensor: bool = True):
         """
         :param batch_size: Number of element to sample
         :return:
         """
         upper_bound = self.buffer_size if self.full else self.pos
         batch_inds = np.random.randint(0, upper_bound, size=batch_size)
-        return self._get_samples(batch_inds)
+        return self._get_samples(batch_inds, to_tensor)
 
     @abstractmethod
-    def _get_samples(self, batch_inds: np.ndarray) -> ReplayBufferSamples | RolloutBufferSamples:
+    def _get_samples(self, batch_inds: np.ndarray, to_tensor: bool) -> ReplayBufferSamples | RolloutBufferSamples:
         """
         :param batch_inds:
         :return:
@@ -374,7 +374,7 @@ class ReplayBuffer(BaseBuffer):
             self.full = True
             self.pos = 0
 
-    def sample(self, batch_size: int) -> ReplayBufferSamples:
+    def sample(self, batch_size: int, to_tensor: bool = True) -> ReplayBufferSamples:
         """
         Sample elements from the replay buffer.
         Custom sampling when using memory efficient variant,
@@ -385,16 +385,16 @@ class ReplayBuffer(BaseBuffer):
         :return:
         """
         if not self.optimize_memory_usage:
-            return super().sample(batch_size=batch_size)
+            return super().sample(batch_size=batch_size, to_tensor=to_tensor)
         # Do not sample the element with index `self.pos` as the transitions is invalid
         # (we use only one array to store `obs` and `next_obs`)
         if self.full:
             batch_inds = (np.random.randint(1, self.buffer_size, size=batch_size) + self.pos) % self.buffer_size
         else:
             batch_inds = np.random.randint(0, self.pos, size=batch_size)
-        return self._get_samples(batch_inds)
+        return self._get_samples(batch_inds, to_tensor)
 
-    def _get_samples(self, batch_inds: np.ndarray) -> ReplayBufferSamples:
+    def _get_samples(self, batch_inds: np.ndarray, to_tensor: bool) -> ReplayBufferSamples:
         # Sample randomly the env idx
         env_indices = np.random.randint(0, high=self.n_envs, size=(len(batch_inds),))
 
@@ -412,7 +412,9 @@ class ReplayBuffer(BaseBuffer):
             (self.dones[batch_inds, env_indices] * (1 - self.timeouts[batch_inds, env_indices])).reshape(-1, 1),
             self.rewards[batch_inds, env_indices].reshape(-1, 1),
         )
-        return ReplayBufferSamples(*tuple(map(self.to_torch, data)))
+        if to_tensor:
+            return ReplayBufferSamples(*tuple(map(self.to_torch, data)))
+        return ReplayBufferSamples(*data)
 
     @staticmethod
     def _maybe_cast_dtype(dtype: np.typing.DTypeLike) -> np.typing.DTypeLike:
@@ -568,7 +570,7 @@ class RolloutBuffer(BaseBuffer):
         if self.pos == self.buffer_size:
             self.full = True
 
-    def get(self, batch_size: int | None = None) -> Generator[RolloutBufferSamples]:
+    def get(self, batch_size: int | None = None, to_tensor: bool = True) -> Generator[RolloutBufferSamples]:
         assert self.full, ""
         indices = np.random.permutation(self.buffer_size * self.n_envs)
         # Prepare the data
@@ -592,12 +594,13 @@ class RolloutBuffer(BaseBuffer):
 
         start_idx = 0
         while start_idx < self.buffer_size * self.n_envs:
-            yield self._get_samples(indices[start_idx : start_idx + batch_size])
+            yield self._get_samples(indices[start_idx : start_idx + batch_size], to_tensor=to_tensor)
             start_idx += batch_size
 
     def _get_samples(
         self,
         batch_inds: np.ndarray,
+        to_tensor: bool,
     ) -> RolloutBufferSamples:
         data = (
             self.observations[batch_inds],
@@ -607,4 +610,6 @@ class RolloutBuffer(BaseBuffer):
             self.advantages[batch_inds].flatten(),
             self.returns[batch_inds].flatten(),
         )
-        return RolloutBufferSamples(*tuple(map(self.to_torch, data)))
+        if to_tensor:
+            return RolloutBufferSamples(*tuple(map(self.to_torch, data)))
+        return RolloutBufferSamples(*data)

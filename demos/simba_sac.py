@@ -9,10 +9,16 @@ python ./demos/simba_sac.py --env.env-type dmc --env.env-name walker-walk --agen
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parents[1]))
+
+# 如果不设置, 在服务器上就会炸CPU (某些环境上, Humanoid-v4, dog-walk)
+import os
+os.environ["OMP_NUM_THREADS"] = "2"
+os.environ["MKL_NUM_THREADS"] = "2"
+
 import tyro
 from dataclasses import dataclass
 from katarl2.agents import SimbaSAC, SimbaSACConfig
-from katarl2.envs.env_cfg import EnvConfig
+from katarl2.envs.common.env_cfg import EnvConfig
 from katarl2.common.logger import LogConfig, get_tensorboard_writer
 from katarl2.envs.env_maker import make_envs
 from katarl2.common import path_manager
@@ -35,6 +41,12 @@ class Args:
 if __name__ == '__main__':
     """ Preprocess """
     args: Args = tyro.cli(Args)
+    if args.env.env_type == 'gymnasium' and args.env.reward_scale == 1.0:
+        print("[INFO] Gymnasium mujoco-py envs reward are not normalized, set reward_scale to 0.1")
+        args.env.reward_scale = 0.1
+        print("[INFO] Gymnasium mujoco-py envs are episodic which have terminations, use_cdq is set to True")
+        args.agent.use_cdq = True
+
     path_manager.build_path_logs(args.agent, args.env, args.debug)
     envs, eval_envs = make_envs(args.env)
     logger = get_tensorboard_writer(args.logger, args)

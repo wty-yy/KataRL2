@@ -9,10 +9,16 @@ python ./demos/sac.py --env.env-type dmc --env.env-name walker-walk --agent.num-
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parents[1]))
+
+# 如果不设置, 在服务器上就会炸CPU (某些环境上, Humanoid-v4, dog-walk) (SimbaSAC上发现的)
+import os
+os.environ["OMP_NUM_THREADS"] = "2"
+os.environ["MKL_NUM_THREADS"] = "2"
+
 import tyro
 from dataclasses import dataclass
 from katarl2.agents import SAC, SACConfig
-from katarl2.envs.env_cfg import EnvConfig
+from katarl2.envs.common.env_cfg import EnvConfig
 from katarl2.common.logger import LogConfig, get_tensorboard_writer
 from katarl2.envs.env_maker import make_envs
 from katarl2.common import path_manager

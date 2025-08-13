@@ -2,6 +2,7 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
+import torch.distributions as td
 
 from gymnasium.spaces import Box
 import numpy as np
@@ -47,21 +48,6 @@ class Actor(nn.Module):
         self.fc_logstd = nn.Linear(hidden_dim, np.prod(action_space.shape))
         init_orthogonal_linear(self.fc_mean, gain=1.0)
         init_orthogonal_linear(self.fc_logstd, gain=1.0)
-        # action rescaling
-        self.register_buffer(
-            "action_scale",
-            torch.tensor(
-                (action_space.high - action_space.low) / 2.0,
-                dtype=torch.float32,
-            ),
-        )
-        self.register_buffer(
-            "action_bias",
-            torch.tensor(
-                (action_space.high + action_space.low) / 2.0,
-                dtype=torch.float32,
-            ),
-        )
 
     def forward(self, x):
         x = self.encoder(x)
@@ -75,15 +61,15 @@ class Actor(nn.Module):
     def get_action(self, x, train: bool = True):
         mean, log_std = self(x)
         std = log_std.exp()
-        if not train:
-            std = torch.full_like(std, 1e-9)
-        normal = torch.distributions.Normal(mean, std)
-        x_t = normal.rsample()  # for reparameterization trick (mean + std * N(0,1))
-        y_t = torch.tanh(x_t)
-        action = y_t * self.action_scale + self.action_bias
-        log_prob = normal.log_prob(x_t)
+        if train:
+            normal = torch.distributions.Normal(mean, std)
+            x_t = normal.rsample()  # for reparameterization trick (mean + std * N(0,1))
+            log_prob = normal.log_prob(x_t)
+        else:
+            x_t = mean
+            log_prob = torch.zeros_like(x_t)
+        action = torch.tanh(x_t)
         # Enforcing Action Bound
-        log_prob -= torch.log(self.action_scale * (1 - y_t.pow(2)) + 1e-6)
+        log_prob -= torch.log((1 - action.pow(2)).clamp(1e-6))
         log_prob = log_prob.sum(1, keepdim=True)
-        mean = torch.tanh(mean) * self.action_scale + self.action_bias
-        return action, log_prob, mean
+        return action, log_prob

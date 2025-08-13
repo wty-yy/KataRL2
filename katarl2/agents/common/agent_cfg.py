@@ -52,4 +52,8 @@ class AgentConfig:
     # more params ...
 
 def get_full_policy_name(cfg: AgentConfig) -> str:
-    return f"{cfg.policy_name.lower()}_{cfg.action_type.lower()}_{cfg.network_name.lower()}"
+    name = f"{cfg.policy_name.lower()}_{cfg.action_type.lower()}_{cfg.network_name.lower()}"
+    if cfg.policy_name.lower() == 'simba':
+        if cfg.use_cdq:
+            name += '_cdq'
+    return name

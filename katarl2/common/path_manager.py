@@ -1,7 +1,7 @@
 import time
 from pathlib import Path
 from katarl2.envs import get_env_name
-from katarl2.envs.env_cfg import EnvConfig
+from katarl2.envs.common.env_cfg import EnvConfig
 from katarl2.agents.common.agent_cfg import AgentConfig, get_full_policy_name
 
 class PathManager:

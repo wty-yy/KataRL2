@@ -8,7 +8,7 @@ from shimmy import DmControlCompatibilityV0 as DmControltoGymnasium
 from typing import Literal
 from dataclasses import dataclass
 from katarl2.common import path_manager
-from katarl2.envs.env_cfg import EnvConfig
+from katarl2.envs.common.env_cfg import EnvConfig
 
 # 20 tasks
 DMC_EASY_MEDIUM = [
@@ -127,5 +127,4 @@ def make_dmc_env_from_cfg(cfg: EnvConfig):
     env = make_dmc_env(cfg.env_name, cfg.seed)
     if cfg.capture_video:
         env = gym.wrappers.RecordVideo(env, str(PATH_VIDEOS))
-    env = gym.wrappers.RecordEpisodeStatistics(env)
     return env

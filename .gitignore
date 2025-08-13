@@ -1,9 +1,13 @@
+# Cache
 .vscode
 __pycache__
-logs
 
+# Debug
 mydebug
 mytest
-wandb
 
+# Log
+logs
+wandb
+swanlog
 nohup.out

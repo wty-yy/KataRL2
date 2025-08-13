@@ -7,13 +7,14 @@ PATH_NOHUP_OUT_DIR.mkdir(parents=True, exist_ok=True)
 # 配置任务
 tasks = [
     # (env_type, env_name, cuda_list, seed_list)
-    # ("gymnasium", "Hopper-v4",          [0], [0]),
-    # ("gymnasium", "Ant-v4",             [3, 3, 3], [0, 1, 2]),
-    # ("gymnasium", "HalfCheetah-v4",     [0, 0, 0], [0, 1, 2]),
-    # ("gymnasium", "HumanoidStandup-v4", [1, 1, 1], [0, 1, 2]),
-    # ("gymnasium", "Humanoid-v4",        [2, 2, 2], [0, 1, 2]),
-    ("dmc", "walker-walk",            [0, 0, 0], [0, 1, 2]),
-    ("dmc", "humanoid-walk",          [1, 1, 1], [0, 1, 2]),
+    ("gymnasium", "Hopper-v4",          [0, 0, 0], [0, 1, 2]),
+    ("gymnasium", "Ant-v4",             [1, 1, 1], [0, 1, 2]),
+    ("gymnasium", "HalfCheetah-v4",     [2, 2, 2], [0, 1, 2]),
+    ("gymnasium", "HumanoidStandup-v4", [3, 3, 3], [0, 1, 2]),
+    ("gymnasium", "Humanoid-v4",        [4, 4, 4], [0, 1, 2]),
+    ("dmc", "walker-walk",              [5, 5, 5], [0, 1, 2]),
+    ("dmc", "humanoid-walk",            [6, 6, 6], [0, 1, 2]),
+    ("dmc", "dog-walk",                 [7, 7, 7], [0, 1, 2]),
 ]
 
 # 额外参数（可选）
@@ -21,6 +22,7 @@ extra_args = [
     "--logger.use-swanlab",
     # "--logger.use-wandb",
     "--agent.verbose 1",
+    # "--debug",
 ]
 
 # 基础命令

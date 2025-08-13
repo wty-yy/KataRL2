@@ -1,7 +1,7 @@
 import gymnasium as gym
 from dataclasses import dataclass
 from typing import Literal
-from katarl2.envs.env_cfg import EnvConfig
+from katarl2.envs.common.env_cfg import EnvConfig
 from katarl2.common import path_manager
 from gymnasium.core import ObsType
 from typing import Any
@@ -50,7 +50,6 @@ def make_gymnasium_env_from_cfg(cfg: EnvConfig):
         env = gym.wrappers.RecordVideo(env, str(PATH_VIDEOS))
     else:
         env = gym.make(cfg.env_name)
-    env = gym.wrappers.RecordEpisodeStatistics(env)
     env = SeedWrapper(env, cfg.seed)
     env.action_space.seed(cfg.seed)
     return env

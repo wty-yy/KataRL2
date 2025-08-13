@@ -64,6 +64,8 @@ class EnvConfig:
     action_repeat: int = 1
     # Rescale action space to (-1, 1) (optional)
     rescale_action: Optional[bool] = None
+    # Reward scale factor
+    reward_scale: float = 1.0
 
 def get_env_name(cfg: EnvConfig) -> str:
     """ eg: 'Hoop-v4__gymnasium' """

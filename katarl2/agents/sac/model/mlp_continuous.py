@@ -62,13 +62,15 @@ class Actor(nn.Module):
     def get_action(self, x, train: bool = True):
         mean, log_std = self(x)
         std = log_std.exp()
-        if not train:
-            std = torch.full_like(std, 1e-9)
-        normal = torch.distributions.Normal(mean, std)
-        x_t = normal.rsample()  # for reparameterization trick (mean + std * N(0,1))
+        if train:
+            normal = torch.distributions.Normal(mean, std)
+            x_t = normal.rsample()  # for reparameterization trick (mean + std * N(0,1))
+            log_prob = normal.log_prob(x_t)
+        else:
+            x_t = mean
+            log_prob = torch.zeros_like(x_t)
         y_t = torch.tanh(x_t)
         action = y_t * self.action_scale + self.action_bias
-        log_prob = normal.log_prob(x_t)
         # Enforcing Action Bound
         log_prob -= torch.log(self.action_scale * (1 - y_t.pow(2)) + 1e-6)
         log_prob = log_prob.sum(1, keepdim=True)

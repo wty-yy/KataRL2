@@ -15,10 +15,11 @@ from katarl2.agents.sac.model.mlp_continuous import Actor, SoftQNetwork
 from katarl2.common import path_manager
 from katarl2.agents.common.buffers import ReplayBuffer
 from typing import Optional
+from katarl2.agents.common.agent import Agent
 from katarl2.common.utils import cvt_string_time
-from katarl2.envs.env_cfg import EnvConfig
+from katarl2.envs.common.env_cfg import EnvConfig
 
-class SAC:
+class SAC(Agent):
     def __init__(
             self, *,
             cfg: SACConfig,
@@ -27,20 +28,7 @@ class SAC:
             env_cfg: Optional[EnvConfig] = None,
             logger: Optional[SummaryWriter] = None,
         ):
-        """
-        Args:
-            cfg: SACConfig, SAC算法配置文件
-            envs: Optional[gym.vector.SyncVectorEnv], 训练所需的交互环境
-            eval_envs: Optional[gym.vector.SyncVectorEnv], 评估所需的环境
-            env_cfg: Optional[EnvConfig], 环境配置文件
-            logger: Optional[SummaryWriter], 训练记录的日志信息
-        """
-        self.cfg = cfg
-        self.envs = envs
-        self.eval_envs = eval_envs
-        self.env_cfg = env_cfg
-        self.logger = logger
-        self.device = cfg.device if torch.cuda.is_available() and 'cuda' in cfg.device else 'cpu'
+        super().__init__(cfg=cfg, envs=envs, eval_envs=eval_envs, env_cfg=env_cfg, logger=logger)
 
         if envs is not None:
             # 将环境的必要参数保存到agent配置中, 便于模型加载时使用
@@ -99,7 +87,7 @@ class SAC:
             self.PATH_CKPTS.mkdir(exist_ok=True, parents=True)
 
         self.train_steps = 0
-        self.global_step = 0
+        self.interaction_step = 0
     
     def predict(self, obs):
         self.actor.eval()
@@ -123,23 +111,15 @@ class SAC:
         bar = range(cfg.num_interaction_steps)
         if cfg.verbose == 2:
             bar = tqdm(bar)
-        for self.global_step in bar:
+        for self.interaction_step in bar:
             # put action logic here
-            if self.global_step < cfg.learning_starts:
+            if self.interaction_step < cfg.learning_starts:
                 actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
             else:
                 actions, _, _ = self.actor.get_action(torch.Tensor(obs).to(self.device))
                 actions = actions.detach().cpu().numpy()
 
             next_obs, rewards, terminations, truncations, infos = envs.step(actions)
-
-            # if "final_info" in infos:
-            #     final_info = infos['final_info']
-            #     mask = final_info['_episode']
-            #     if cfg.verbose == 2:
-            #         bar.set_description(f"episodic_return={final_info['episode']['r'][mask].mean().round(2)}")
-            #     logger.add_scalar("charts/episodic_return", final_info["episode"]["r"][mask].mean(), self.global_step)
-            #     logger.add_scalar("charts/episodic_length", final_info["episode"]["l"][mask].mean(), self.global_step)
 
             # save data to reply buffer; handle `final_obs`
             real_next_obs = next_obs.copy()
@@ -152,7 +132,7 @@ class SAC:
             obs = next_obs
 
             # training.
-            if self.global_step > cfg.learning_starts:
+            if self.interaction_step > cfg.learning_starts:
                 self.train_steps += 1
                 data = self.rb.sample(cfg.batch_size)
                 with torch.no_grad():
@@ -173,7 +153,7 @@ class SAC:
                 qf_loss.backward()
                 self.q_optimizer.step()
 
-                if self.global_step % cfg.policy_frequency == 0:  # TD 3 Delayed update support
+                if self.interaction_step % cfg.policy_frequency == 0:  # TD 3 Delayed update support
                     for _ in range(
                         cfg.policy_frequency
                     ):  # compensate for the delay by doing 'actor_update_interval' instead of 1
@@ -198,34 +178,40 @@ class SAC:
                             self.ent_coef = self.log_ent_coef.exp().item()
 
                 # update the target networks
-                if self.global_step % cfg.target_network_frequency == 0:
+                if self.interaction_step % cfg.target_network_frequency == 0:
                     for param, target_param in zip(self.qf1.parameters(), self.qf1_target.parameters()):
                         target_param.data.copy_(cfg.tau * param.data + (1 - cfg.tau) * target_param.data)
                     for param, target_param in zip(self.qf2.parameters(), self.qf2_target.parameters()):
                         target_param.data.copy_(cfg.tau * param.data + (1 - cfg.tau) * target_param.data)
 
                 """ Logging """
-                if self.global_step % cfg.log_per_interaction_step == 0:
-                    logger.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), self.global_step)
-                    logger.add_scalar("losses/qf2_values", qf2_a_values.mean().item(), self.global_step)
-                    logger.add_scalar("losses/qf1_loss", qf1_loss.item(), self.global_step)
-                    logger.add_scalar("losses/qf2_loss", qf2_loss.item(), self.global_step)
-                    logger.add_scalar("losses/qf_loss", qf_loss.item() / 2.0, self.global_step)
-                    logger.add_scalar("losses/actor_loss", actor_loss.item(), self.global_step)
-                    logger.add_scalar("losses/ent_coef", self.ent_coef, self.global_step)
+                if self.interaction_step % cfg.log_per_interaction_step == 0:
+                    env_step = self.interaction_step * self.env_cfg.action_repeat * self.env_cfg.env_num
                     time_used = time.time() - start_time
-                    SPS = int(self.global_step / time_used)
-                    logger.add_scalar("charts/SPS", SPS, self.global_step)
-                    logger.add_scalar("charts/time_sec", time.time() - start_time, self.global_step)
+                    SPS = int(self.interaction_step / time_used)
+                    logs = {
+                        "losses/qf1_values": qf1_a_values.mean().item(),
+                        "losses/qf2_values": qf2_a_values.mean().item(),
+                        "losses/qf1_loss": qf1_loss.item(),
+                        "losses/qf2_loss": qf2_loss.item(),
+                        "losses/qf_loss": qf_loss.item() / 2.0,
+                        "losses/actor_loss": actor_loss.item(),
+                        "losses/ent_coef": self.ent_coef,
+                        "charts/SPS": SPS,
+                        "charts/time_sec": time_used,
+                    }
                     if cfg.autotune:
-                        logger.add_scalar("losses/ent_coef_loss", ent_coef_loss.item(), self.global_step)
+                        logs.update({"losses/ent_coef_loss": ent_coef_loss.item()})
+                    for name, value in logs.items():
+                        logger.add_scalar(name, value, env_step)
+
                     if cfg.verbose == 1 and time.time() - last_verbose_time > 10:
                         last_verbose_time = time.time()
-                        time_left = (cfg.num_interaction_steps - self.global_step) / SPS
-                        print(f"[INFO] {self.global_step}/{cfg.num_interaction_steps} steps, SPS: {SPS}, [{cvt_string_time(time_used)}<{cvt_string_time(time_left)}]")
+                        time_left = (cfg.num_interaction_steps - self.interaction_step) / SPS
+                        print(f"[INFO] {self.interaction_step}/{cfg.num_interaction_steps} steps, SPS: {SPS}, [{cvt_string_time(time_used)}<{cvt_string_time(time_left)}]")
 
             """ Evaluating """
-            if self.global_step % cfg.eval_per_interaction_step == 0:
+            if self.interaction_step % cfg.eval_per_interaction_step == 0:
                 self.eval()
 
     def eval(self):
@@ -244,8 +230,9 @@ class SAC:
                 episodic_lens.extend(final_info['episode']['l'][mask].tolist())
 
         if self.logger is not None:
-            self.logger.add_scalar("charts/episodic_return", np.mean(episodic_returns), self.global_step)
-            self.logger.add_scalar("charts/episodic_length", np.mean(episodic_lens), self.global_step)
+            env_step = self.interaction_step * self.env_cfg.action_repeat * self.env_cfg.env_num
+            self.logger.add_scalar("charts/episodic_return", np.mean(episodic_returns), env_step)
+            self.logger.add_scalar("charts/episodic_length", np.mean(episodic_lens), env_step)
 
     def save(self, path='default') -> Path:
         to_cpu = lambda data: {k: v.to('cpu') for k, v in data.items()}

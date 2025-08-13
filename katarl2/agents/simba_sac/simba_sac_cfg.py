@@ -64,4 +64,8 @@ class SimbaSACConfig(AgentConfig):
     ent_coef: float = 0.2
     # automatic tuning of the entropy coefficient
     autotune: bool = True
+    # target entropy = -target_entropy_coef * action_dim
+    temp_target_entropy_coef: float = 0.5
+    # initial value of temperature parameter log_ent_coef
+    temp_initial_value: float = 0.01
 

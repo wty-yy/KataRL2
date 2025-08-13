@@ -6,14 +6,15 @@ PATH_NOHUP_OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # 配置任务
 tasks = [
-    # (env_name, cuda_list, seed_list)
-    # ("Hopper-v4",          [3, 3, 3], [0, 1, 2]),
-    # ("Ant-v4",             [4, 4, 4], [0, 1, 2]),
-    # ("HalfCheetah-v4",     [2, 2, 2], [0, 1, 2]),
-    # ("HumanoidStandup-v4", [3, 3, 3], [0, 1, 2]),
-    # ("Humanoid-v4",        [6, 6, 7], [0, 1, 2]),
-    ("dmc", "walker-walk",            [2, 2, 3], [0, 1, 2]),
-    ("dmc", "humanoid-walk",          [3, 4, 7], [0, 1, 2]),
+    # (env_type, env_name, cuda_list, seed_list)
+    ("gymnasium", "Hopper-v4",          [0, 0, 0], [0, 1, 2]),
+    ("gymnasium", "Ant-v4",             [0, 0, 1], [0, 1, 2]),
+    ("gymnasium", "HalfCheetah-v4",     [1, 1, 1], [0, 1, 2]),
+    ("gymnasium", "HumanoidStandup-v4", [1, 1, 1], [0, 1, 2]),
+    ("gymnasium", "Humanoid-v4",        [1, 1, 1], [0, 1, 2]),
+    ("dmc", "walker-walk",              [2, 2, 2], [0, 1, 2]),
+    ("dmc", "humanoid-walk",            [3, 3, 3], [0, 1, 2]),
+    ("dmc", "dog-walk",                 [4, 4, 4], [0, 1, 2]),
 ]
 
 # 额外参数（可选）
@@ -21,6 +22,7 @@ extra_args = [
     "--logger.use-swanlab",
     # "--logger.use-wandb",
     "--agent.verbose 1",
+    # "--debug",
 ]
 
 # 基础命令
@@ -51,4 +53,5 @@ if __name__ == "__main__":
             # os.system(" ".join(full_cmd))
             print(f"[Start PID={pid}]: '{' '.join(full_cmd)}'")
             total += 1
+            # time.sleep(1)  # 确保每个任务间有间隔, 避免过快启动导致资源竞争
     print(f"Successfully start {total} tasks.")
