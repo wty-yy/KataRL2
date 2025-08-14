@@ -34,7 +34,7 @@ if __name__ == '__main__':
     """ Eval """
     print("[INFO] Start Evaluation.")
     agent = SimbaSAC.load("/data/user/wutianyang/Coding/KataRL2/logs/sac_v1/simba_continuous_mlp/Humanoid-v4__gymnasium/seed_2_2/20250811-234639/ckpts/sac-994999.pkl", args.agent.device)
-    args.env.env_num = 1
+    args.env.num_envs = 1
     args.env.capture_video = True
     _, eval_envs = make_envs(args.env)
 

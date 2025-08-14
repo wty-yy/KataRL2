@@ -12,8 +12,8 @@ from katarl2.common.path_manager import path_manager
 if __name__ == '__main__':
     cfg = tyro.cli(DMCEnvConfig)
     path_manager._PATH_LOGS = Path("./logs/debug")
-    cfg.env_num = 'walker-walk'
-    cfg.env_num = 1
+    cfg.env_name = 'walker-walk'
+    cfg.num_envs = 1
     # cfg.capture_video = True
     cfg.seed = 0
     envs, _ = make_envs(cfg)

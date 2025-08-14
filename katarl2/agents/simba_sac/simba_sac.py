@@ -19,9 +19,9 @@ from katarl2.common.utils import cvt_string_time
 from katarl2.agents.common.running_mean_std import RunningMeanStd
 from katarl2.envs.common.env_cfg import EnvConfig
 from katarl2.agents.common.utils import calc_gamma
-from katarl2.agents.common.agent import Agent
+from katarl2.agents.common.base_agent import BaseAgent
 
-class SimbaSAC(Agent):
+class SimbaSAC(BaseAgent):
     def __init__(
             self, *,
             cfg: SimbaSACConfig,
@@ -31,12 +31,6 @@ class SimbaSAC(Agent):
             logger: Optional[SummaryWriter] = None,
         ):
         super().__init__(cfg=cfg, envs=envs, eval_envs=eval_envs, env_cfg=env_cfg, logger=logger)
-
-        if envs is not None:
-            # 将环境的必要参数保存到agent配置中, 便于模型加载时使用
-            cfg.num_envs = envs.num_envs
-            cfg.obs_space = envs.single_observation_space
-            cfg.act_space = envs.single_action_space
 
         self.obs_space: gym.Space = cfg.obs_space
         self.act_space: gym.Space = cfg.act_space
@@ -227,7 +221,7 @@ class SimbaSAC(Agent):
 
                 """ Logging """
                 if self.interaction_step % cfg.log_per_interaction_step == 0:
-                    env_step = self.interaction_step * self.env_cfg.action_repeat * self.env_cfg.env_num
+                    env_step = self.interaction_step * self.env_cfg.action_repeat * self.env_cfg.num_envs
                     time_used = time.time() - start_time
                     SPS = int(self.interaction_step / time_used)
                     logs = {
@@ -270,7 +264,7 @@ class SimbaSAC(Agent):
                 episodic_lens.extend(final_info['episode']['l'][mask].tolist())
 
         if self.logger is not None:  # 即使有RewardScale但是由于RecordEpisodeStatistics wrapper在之前, 所以记录的是正确的return
-            env_step = self.interaction_step * self.env_cfg.action_repeat * self.env_cfg.env_num
+            env_step = self.interaction_step * self.env_cfg.action_repeat * self.env_cfg.num_envs
             self.logger.add_scalar("charts/episodic_return", np.mean(episodic_returns), env_step)
             self.logger.add_scalar("charts/episodic_length", np.mean(episodic_lens), env_step)
 

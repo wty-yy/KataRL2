@@ -4,11 +4,11 @@ from dataclasses import dataclass
 from typing import Any
 
 @dataclass
-class AgentConfig:
+class BaseAgentConfig:
     # Algorithm name
-    algo_name: str
+    algo_name: str  # eg: PPO, SAC, ...
     # Policy name
-    policy_name: str
+    policy_name: str  # eg: Basic, Simba, SimbaV2, ...
     # Action type
     action_type: Literal['continuous', 'discrete']
     # Network name
@@ -51,7 +51,7 @@ class AgentConfig:
     # ent_coef: float = 1e-2
     # more params ...
 
-def get_full_policy_name(cfg: AgentConfig) -> str:
+def get_full_policy_name(cfg: BaseAgentConfig) -> str:
     name = f"{cfg.policy_name.lower()}_{cfg.action_type.lower()}_{cfg.network_name.lower()}"
     if cfg.policy_name.lower() == 'simba':
         if cfg.use_cdq:

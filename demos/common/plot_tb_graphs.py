@@ -224,7 +224,7 @@ def main():
             continue
 
         plt.title(env)
-        plt.xlabel("Step")
+        plt.xlabel("Env Step")
         plt.ylabel("Episodic Return")
         plt.legend(loc="best", frameon=True)
         plt.grid(True, linewidth=0.4, alpha=0.5)

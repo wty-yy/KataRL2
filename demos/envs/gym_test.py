@@ -10,8 +10,8 @@ from katarl2.envs.env_maker import make_envs
 
 if __name__ == '__main__':
     cfg = tyro.cli(GymEnvConfig)
-    cfg.env_num = 'Ant-v4'
-    cfg.env_num = 3
+    cfg.env_name = 'Ant-v4'
+    cfg.num_envs = 3
     cfg.seed = 0
     envs, _ = make_envs(cfg)
     envs.reset()

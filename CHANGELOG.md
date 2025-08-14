@@ -9,10 +9,11 @@
 7. 加入`gymnasium[mujoco-py]`, `DMC`环境
 
 ## v0.2 (20250813 - )
+1. 加入gymnaisum Atari环境
+2. 加入更高效的envpool的Atari环境
+3. 加入PPO算法, 确定和cleanrl曲线一致
 TODO:
-- [ ] 加入PPO算法, 确定和cleanrl曲线一致
-- [ ] 加入gymnaisum Atari环境
-- [ ] 加入更高效的envpool的Atari环境
-- [ ] 在PPO中测试多个Atari环境的三个种子
+- [ ] 在PPO中测试10个Atari环境的三个种子
+- [ ] 在PPO中加入Simba测试是否有性能提升
 
 P.S. 由于gymnasium>1.0默认的会将VecEnv的autoreset在下一步中进行处理, 导致错误的将最后一帧状态和初始化的状态加入buff, 导致模型效果很差, 通过修改`gym.vector.SyncVectorEnv(envs_list, autoreset_mode=AutoresetMode.SAME_STEP)`修复

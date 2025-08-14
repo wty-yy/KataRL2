@@ -64,7 +64,7 @@ if __name__ == '__main__':
     """ Eval """
     print("[INFO] Start Evaluation.")
     agent = SimbaSAC.load(path_ckpt, args.agent.device)
-    args.env.env_num = 1
+    args.env.num_eval_envs = 1
     args.env.capture_video = True
     agent.cfg.num_eval_episodes = 1
     _, eval_envs = make_envs(args.env)

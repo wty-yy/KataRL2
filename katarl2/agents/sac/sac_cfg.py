@@ -1,10 +1,10 @@
 from typing import Literal
 from dataclasses import dataclass
 from typing import Any
-from katarl2.agents.common.agent_cfg import AgentConfig
+from katarl2.agents.common.base_agent_cfg import BaseAgentConfig
 
 @dataclass
-class SACConfig(AgentConfig):
+class SACConfig(BaseAgentConfig):
     # Algorithm name
     algo_name: Literal['SAC'] = 'SAC'
     # Policy name for SAC

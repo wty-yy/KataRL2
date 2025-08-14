@@ -5,12 +5,12 @@ from pathlib import Path
 from typing import Optional
 from katarl2.envs.common.env_cfg import EnvConfig
 from torch.utils.tensorboard import SummaryWriter
-from katarl2.agents.common.agent_cfg import AgentConfig
+from katarl2.agents.common.base_agent_cfg import BaseAgentConfig
 
-class Agent:
+class BaseAgent:
     def __init__(
             self, *,
-            cfg: AgentConfig,
+            cfg: BaseAgentConfig,
             envs: Optional[gym.vector.SyncVectorEnv] = None,
             eval_envs: Optional[gym.vector.SyncVectorEnv] = None,
             env_cfg: Optional[EnvConfig] = None,
@@ -33,6 +33,12 @@ class Agent:
         self.env_cfg = env_cfg
         self.logger = logger
         self.device = cfg.device if torch.cuda.is_available() and 'cuda' in cfg.device else 'cpu'
+
+        if envs is not None:
+            # 将环境的必要参数保存到agent配置中, 便于模型加载时使用
+            cfg.num_envs = envs.num_envs
+            cfg.obs_space = envs.single_observation_space
+            cfg.act_space = envs.single_action_space
     
     def predict(self, obs: np.ndarray):
         raise NotImplementedError("The predict method must be implemented by the agent subclass.")
@@ -41,11 +47,29 @@ class Agent:
         """ 训练, 和envs环境交互步进次数为cfg.num_env_steps """
         raise NotImplementedError("The learn method must be implemented by the agent subclass.")
     
-    def eval(self):
-        """ 评估, 和eval_envs环境交互步进次数为cfg.num_eval_episodes """
-        raise NotImplementedError("The eval method must be implemented by the agent subclass.")
+    def eval(self, env_step: Optional[int] = None):
+        """ 评估, 和eval_envs环境交互步进次数为cfg.num_eval_episodes, 在train中记录需传入当前env_step
+        仅需实现对应智能体的predict方法, 环境会自动包装RecordEpisodeStatistics记录总奖励, 从而实现以下评估代码
+        """
+        episodic_returns = []
+        episodic_lens = []
 
-    def save(self, path: str | Path):
+        obs, _ = self.eval_envs.reset()
+        while len(episodic_returns) < self.cfg.num_eval_episodes:
+            action = self.predict(obs)
+            obs, rewards, terminations, truncations, infos = self.eval_envs.step(action)
+            
+            if "final_info" in infos:
+                final_info = infos['final_info']
+                mask = final_info['_episode']
+                episodic_returns.extend(final_info['episode']['r'][mask].tolist())
+                episodic_lens.extend(final_info['episode']['l'][mask].tolist())
+
+        if self.logger is not None and env_step is not None:
+            self.logger.add_scalar("charts/episodic_return", np.mean(episodic_returns), env_step)
+            self.logger.add_scalar("charts/episodic_length", np.mean(episodic_lens), env_step)
+
+    def save(self, path: str | Path = 'default'):
         """ 保存, 使用torch.save保存所有转为cpu的模型权重和其他重要参数 """
         raise NotImplementedError("The save method must be implemented by the agent subclass.")
 

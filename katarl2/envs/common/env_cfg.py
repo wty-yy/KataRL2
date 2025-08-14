@@ -5,11 +5,12 @@ from dataclasses import dataclass
 @dataclass
 class EnvConfig:
     # Environment type
-    env_type: Literal['gymnasium', 'dmc']
+    env_type: Literal['gymnasium', 'dmc', 'envpool']
     # Environment name
     env_name: Literal[
         # gymnasium
         'Hopper-v4', 'Ant-v4', 'HalfCheetah-v4', 'HumanoidStandup-v4', 'Humanoid-v4',
+
         # dmc
         'acrobot-swingup',
         'cartpole-balance',
@@ -47,12 +48,24 @@ class EnvConfig:
         'dog-stand',
         'dog-walk',
         'dog-run',
-        'dog-trot'
+        'dog-trot',
+
+        # envpool
+        'Assault-v5',
+        'Asterix-v5',
+        'Boxing-v5',
+        'Breakout-v5',
+        'Phoenix-v5',
+        'Pong-v5',
+        'Qbert-v5',
+        'Seaquest-v5',
+        'UpNDown-v5',
+        'WizardOfWor-v5',
     ]
     # Number of parallel environments (Train)
-    env_num: int = 1
+    num_envs: int = 1
     # Number of parallel environments (Evaluate)
-    eval_env_num: int = 1
+    num_eval_envs: int = 1
     # Whether to capture video (checkout `PATH_LOGS/video` folder)
     capture_video: bool = False
     # Random seed for environment
