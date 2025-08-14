@@ -1,8 +1,13 @@
 import time
 import subprocess
+from katarl2.common.utils import cvt_string_time
 from pathlib import Path
 PATH_NOHUP_OUT_DIR = Path(__file__).parents[1] / "logs/runs"
 PATH_NOHUP_OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+# sleep_time = 3 * 3600
+# print("Sleep for time: ", cvt_string_time(sleep_time))
+# time.sleep(sleep_time)
 
 # 配置任务
 tasks = [
@@ -15,6 +20,9 @@ tasks = [
     ("dmc", "walker-walk",              [2, 2, 2], [0, 1, 2]),
     ("dmc", "humanoid-walk",            [3, 3, 3], [0, 1, 2]),
     ("dmc", "dog-walk",                 [4, 4, 4], [0, 1, 2]),
+    ("dmc", "humanoid-run",             [2, 2, 2], [0, 1, 2]),
+    ("dmc", "dog-run",                  [2, 2, 2], [0, 1, 2]),
+    ("dmc", "dog-trot",                 [2, 2, 2], [0, 1, 2]),
 ]
 
 # 额外参数（可选）

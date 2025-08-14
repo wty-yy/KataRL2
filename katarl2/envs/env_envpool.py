@@ -65,13 +65,15 @@ class RecordEpisodeStatistics:
         # 当一局游戏结束是所有的生命值全部消耗完, lives=0或者terminated=True
         self.episode_returns *= 1 - infos["terminated"]
         self.episode_lengths *= 1 - infos["terminated"]
+        episodic_info = {
+            'r': self.returned_episode_returns,
+            'l': self.returned_episode_lengths,
+        }
         final_info = {
-            'episode': {
-                'r': self.returned_episode_returns,
-                'l': self.returned_episode_lengths,
-            },
+            'episode': episodic_info,
             '_episode': terminations | truncations
         }
+        infos['episodic_info'] = episodic_info  # 在强制中断游戏也可以获取当前episode的r,l
         if infos['terminated'].sum():
             infos['final_info'] = final_info
         return (

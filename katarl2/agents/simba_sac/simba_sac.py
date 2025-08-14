@@ -276,7 +276,7 @@ class SimbaSAC(BaseAgent):
                 'actor': to_cpu(self.actor.state_dict()),
                 'qf1': to_cpu(self.qf1.state_dict()),
             },
-            'rms': {**self.rms.get_statistics()}
+            'rms': self.rms.get_statistics()
         }
         if self.cfg.use_cdq:
             data['model']['qf2'] = to_cpu(self.qf2.state_dict())

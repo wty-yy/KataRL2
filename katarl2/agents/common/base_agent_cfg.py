@@ -53,7 +53,13 @@ class BaseAgentConfig:
 
 def get_full_policy_name(cfg: BaseAgentConfig) -> str:
     name = f"{cfg.policy_name.lower()}_{cfg.action_type.lower()}_{cfg.network_name.lower()}"
-    if cfg.policy_name.lower() == 'simba':
+    if cfg.algo_name.lower() == 'sac' and cfg.policy_name.lower() == 'simba':
         if cfg.use_cdq:
             name += '_cdq'
+    if cfg.algo_name.lower() == 'ppo' and cfg.policy_name.lower() == 'simba':
+        if cfg.origin_agent:
+            name += '_OrgNet'
+    if cfg.algo_name.lower() == 'ppo' and cfg.policy_name.lower() == 'basic':
+        if cfg.norm_network:
+            name += '_NormNet'
     return name

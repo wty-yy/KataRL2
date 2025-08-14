@@ -1,4 +1,5 @@
 """ From stable_baselines3_common_running_mean_std.py """
+import torch
 import numpy as np
 
 class RunningMeanStd:
@@ -91,4 +92,10 @@ class RunningMeanStd:
         """
         Normalize the observation using the running statistics.
         """
-        return (obs - self.mean) / np.sqrt(self.var + self.epsilon)
+        if isinstance(obs, np.ndarray):
+            return (obs - self.mean) / np.sqrt(self.var + self.epsilon)
+        elif isinstance(obs, torch.Tensor):
+            mean = torch.Tensor(self.mean).to(obs.device)
+            var = torch.Tensor(self.var).to(obs.device)
+            return (obs - mean) / torch.sqrt(var + self.epsilon)
+        raise Exception(f"Input should be np.ndarray or torch.Tensor, but get {type(obs)}")

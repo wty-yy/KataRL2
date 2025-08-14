@@ -3,11 +3,11 @@ from dataclasses import dataclass
 from katarl2.agents.common.base_agent_cfg import BaseAgentConfig
 
 @dataclass
-class PPOConfig(BaseAgentConfig):
+class SimbaPPOConfig(BaseAgentConfig):
     # Algorithm name
     algo_name: Literal['PPO'] = 'PPO'
     # Policy name
-    policy_name: Literal['Basic'] = 'Basic'
+    policy_name: Literal['Simba'] = 'Simba'
     # Action type
     action_type: Literal['discrete'] = 'discrete'
     # Network name
@@ -24,8 +24,21 @@ class PPOConfig(BaseAgentConfig):
     num_env_steps: int = int(1e7)
 
     """ hyper-parameters (each algorithm has diff params, here are some examples) """
-    # the learning rate of the optimizer
+    # the learning rate of the agent
     learning_rate: float = 2.5e-4
+    # the weight decay of the agent
+    weight_decay: float = 1e-2
+
+    # the number of actor residual blocks
+    actor_num_blocks: int = 1
+    # the hidden dimension of actor residual block
+    actor_hidden_dim: int = 128
+
+    # the number of critic network residual blocks
+    critic_num_blocks: int = 2
+    # the hidden dimension of critic network residual block
+    critic_hidden_dim: int = 512
+
     # the number of steps to run in each environment per policy rollout
     num_steps: int = 128
     # Toggle learning rate annealing for policy and value networks
@@ -62,4 +75,4 @@ class PPOConfig(BaseAgentConfig):
     num_iterations: int = 0
 
     """ DIY """
-    norm_network: bool = False
+    origin_agent: bool = False

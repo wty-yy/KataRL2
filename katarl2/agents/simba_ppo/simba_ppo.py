@@ -1,9 +1,14 @@
-""" From cleanrl/ppo_atari.py """
+"""
+cpu buffer (rms): SPS: 653
+torch buffer (rms): 1278
+no rms: 1537
+"""
+""" From cleanrl/ppo_atari.py + simba """
 import gymnasium as gym
 from typing import Optional
 from katarl2.envs.common.env_cfg import EnvConfig
 from torch.utils.tensorboard import SummaryWriter
-from katarl2.agents.ppo.ppo_cfg import PPOConfig
+from katarl2.agents.simba_ppo.simba_ppo_cfg import SimbaPPOConfig
 
 import torch
 from torch import nn
@@ -15,14 +20,16 @@ import numpy as np
 from tqdm import tqdm
 from pathlib import Path
 from katarl2.agents.common.base_agent import BaseAgent
-from katarl2.agents.ppo.model.cnn_discrete import Agent, Agent_GN_LN
+from katarl2.agents.simba_ppo.model.cnn_discrete import Agent
+from katarl2.agents.simba_ppo.model.cnn_discrete_origin import Agent as OriginAgent
 from katarl2.common import path_manager
 from katarl2.common.utils import cvt_string_time
+from katarl2.agents.common.running_mean_std import RunningMeanStd
 
-class PPO(BaseAgent):
+class SimbaPPO(BaseAgent):
     def __init__(
             self, *,
-            cfg: PPOConfig,
+            cfg: SimbaPPOConfig,
             envs: Optional[gym.vector.SyncVectorEnv] = None,
             eval_envs: Optional[gym.vector.SyncVectorEnv] = None,
             env_cfg: Optional[EnvConfig] = None,
@@ -46,11 +53,17 @@ class PPO(BaseAgent):
         torch.backends.cudnn.deterministic = True
 
         """ Model """
-        if cfg.norm_network:
-            self.agent = Agent_GN_LN(self.act_space).to(self.device)
+        if cfg.origin_agent:
+            self.agent = OriginAgent(action_space=self.act_space).to(self.device)
         else:
-            self.agent = Agent(self.act_space).to(self.device)
-        self.optimizer = optim.Adam(self.agent.parameters(), lr=cfg.learning_rate, eps=1e-5)
+            self.agent = Agent(
+                action_space=self.act_space,
+                actor_hidden_dim=cfg.actor_hidden_dim,
+                actor_num_blocks=cfg.actor_num_blocks,
+                critic_hidden_dim=cfg.critic_hidden_dim,
+                critic_num_blocks=cfg.critic_num_blocks,
+            ).to(self.device)
+        self.optimizer = optim.AdamW(self.agent.parameters(), lr=cfg.learning_rate, eps=1e-5, weight_decay=cfg.weight_decay)
 
         """ Buffer """
         self.obs = torch.zeros((cfg.num_steps, cfg.num_envs) + self.obs_space.shape).to(self.device)
@@ -60,12 +73,15 @@ class PPO(BaseAgent):
         self.dones = torch.zeros((cfg.num_steps, cfg.num_envs)).to(self.device)
         self.values = torch.zeros((cfg.num_steps, cfg.num_envs)).to(self.device)
 
+        """ Running statistics normalization """
+        self.rms = RunningMeanStd(self.obs_space.shape)
+
     def predict(self, obs: np.ndarray):
-        action = self.agent.get_action_and_value(torch.Tensor(obs).to(self.device), train=False)[0]
+        action = self.agent.get_action_and_value(torch.Tensor(self.rms.normalize(obs)).to(self.device), train=False)[0]
         return action.detach().cpu().numpy()
     
     def learn(self):
-        cfg: PPOConfig = self.cfg
+        cfg: SimbaPPOConfig = self.cfg
         envs, logger = self.envs, self.logger
         self.env_step = 0
         self.interaction_step = 0
@@ -77,6 +93,7 @@ class PPO(BaseAgent):
 
         """ Training """
         next_obs, _ = envs.reset()
+        self.rms.update(next_obs)
         next_obs = torch.Tensor(next_obs).to(self.device)
         next_done = torch.zeros(cfg.num_envs).to(self.device)
 
@@ -99,20 +116,21 @@ class PPO(BaseAgent):
 
                 # ALGO LOGIC: action logic
                 with torch.no_grad():
-                    action, logprob, _, value = self.agent.get_action_and_value(next_obs)
+                    action, logprob, _, value = self.agent.get_action_and_value(self.rms.normalize(next_obs))
                     self.values[step] = value.flatten()
                 self.actions[step] = action
                 self.logprobs[step] = logprob
 
                 # TRY NOT TO MODIFY: execute the game and log data.
                 next_obs, reward, terminations, truncations, infos = envs.step(action.cpu().numpy())
+                self.rms.update(next_obs)
                 next_done = np.logical_or(terminations, truncations)
                 self.rewards[step] = torch.tensor(reward).to(self.device).view(-1)
                 next_obs, next_done = torch.Tensor(next_obs).to(self.device), torch.Tensor(next_done).to(self.device)
 
             # bootstrap value if not done
             with torch.no_grad():
-                next_value = self.agent.get_value(next_obs).reshape(1, -1)
+                next_value = self.agent.get_value(self.rms.normalize(next_obs)).reshape(1, -1)
                 advantages = torch.zeros_like(self.rewards).to(self.device)
                 lastgaelam = 0
                 for t in reversed(range(cfg.num_steps)):
@@ -144,7 +162,7 @@ class PPO(BaseAgent):
                     end = start + cfg.minibatch_size
                     mb_inds = b_inds[start:end]
 
-                    _, newlogprob, entropy, newvalue = self.agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
+                    _, newlogprob, entropy, newvalue = self.agent.get_action_and_value(self.rms.normalize(b_obs[mb_inds]), b_actions.long()[mb_inds])
                     logratio = newlogprob - b_logprobs[mb_inds]
                     ratio = logratio.exp()
 
@@ -212,10 +230,13 @@ class PPO(BaseAgent):
                 }
                 for name, value in logs.items():
                     self.logger.add_scalar(name, value, self.env_step)
-                if cfg.verbose == 1 and time.time() - last_verbose_time > 10:
+                if cfg.verbose >= 1 and time.time() - last_verbose_time > 10:
                     last_verbose_time = time.time()
                     time_left = (cfg.num_iterations - iteration) * cfg.num_steps * cfg.num_envs / SPS
-                    print(f"[INFO] {iteration}/{cfg.num_iterations} iters, SPS: {SPS}, [{cvt_string_time(time_used)}<{cvt_string_time(time_left)}]")
+                    if cfg.verbose == 1:
+                        print(f"[INFO] {iteration}/{cfg.num_iterations} iters, SPS: {SPS}, [{cvt_string_time(time_used)}<{cvt_string_time(time_left)}]")
+                    elif cfg.verbose == 2:
+                        bar.set_description(f"{SPS=}")
             
             """ Evaluating """
             if last_eval_interaction_step == 0 or self.interaction_step - last_eval_interaction_step >= cfg.eval_per_interaction_step:
@@ -230,6 +251,7 @@ class PPO(BaseAgent):
         data = {
             'config': self.cfg,
             'agent': to_cpu(self.agent.state_dict()),
+            'rms': self.rms.get_statistics(),
         }
         if path == 'default':
             PATH_LOGS = path_manager.PATH_LOGS
@@ -240,7 +262,7 @@ class PPO(BaseAgent):
         else:
             path_ckpt = path
         torch.save(data, str(path_ckpt))
-        print(f"[INFO] Save PPO model-{self.train_step} to {path_ckpt}.")
+        print(f"[INFO] Save SimbaPPO model-{self.train_step} to {path_ckpt}.")
         return path_ckpt
 
     @classmethod
@@ -248,7 +270,8 @@ class PPO(BaseAgent):
         data = torch.load(str(path), map_location=device, weights_only=False)
         self = cls(cfg=data['config'])
         self.agent.load_state_dict(data['agent'])
-        print(f"[INFO] Load PPO model from {path} successfully.")
+        self.rms.load_statistics(data['rms'])
+        print(f"[INFO] Load SimbaPPO model from {path} successfully.")
         return self
 
 

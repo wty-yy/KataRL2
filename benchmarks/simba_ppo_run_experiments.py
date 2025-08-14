@@ -12,14 +12,14 @@ PATH_NOHUP_OUT_DIR.mkdir(parents=True, exist_ok=True)
 # 配置任务
 tasks = [
     # (env_type, env_name, cuda_list, seed_list)
-    ("envpool", 'Assault-v5',          [3, 3, 3], [0, 1, 2]),
+    ("envpool", 'Assault-v5',          [4, 4, 4], [0, 1, 2]),
     ("envpool", 'Asterix-v5',          [3, 3, 3], [0, 1, 2]),
-    ("envpool", 'Boxing-v5',           [3, 3, 5], [0, 1, 2]),
-    ("envpool", 'Breakout-v5',         [3, 3, 3], [0, 1, 2]),
+    ("envpool", 'Boxing-v5',           [0, 0, 0], [0, 1, 2]),
+    ("envpool", 'Breakout-v5',         [4, 4, 4], [0, 1, 2]),
     ("envpool", 'Phoenix-v5',          [5, 5, 5], [0, 1, 2]),
-    ("envpool", 'Pong-v5',             [4, 4, 5], [0, 1, 2]),
-    ("envpool", 'Qbert-v5',            [5, 5, 5], [0, 1, 2]),
-    ("envpool", 'Seaquest-v5',         [5, 5, 5], [0, 1, 2]),
+    ("envpool", 'Pong-v5',             [5, 4, 4], [0, 1, 2]),
+    ("envpool", 'Qbert-v5',            [6, 6, 6], [0, 1, 2]),
+    ("envpool", 'Seaquest-v5',         [6, 6, 6], [0, 1, 2]),
     ("envpool", 'UpNDown-v5',          [7, 7, 7], [0, 1, 2]),
     ("envpool", 'WizardOfWor-v5',      [7, 7, 7], [0, 1, 2]),
 ]
@@ -30,12 +30,12 @@ extra_args = [
     # "--logger.use-wandb",
     "--agent.verbose 1",
     # "--debug",
-    # "--agent.norm-network",
+    "--agent.origin-agent",
 ]
 
 # 基础命令
 base_cmd = [
-    "python", "-u", "demos/ppo.py",
+    "python", "-u", "demos/simba_ppo.py",
 ]
 
 def run_command(cmd):
@@ -55,7 +55,7 @@ if __name__ == "__main__":
             ] + extra_args
 
             # 用 nohup 启动并输出到对应 log 文件
-            log_file = str(PATH_NOHUP_OUT_DIR / f"log_ppo_{env_name}_seed{seed}_{time.strftime('%Y%m%d_%H%M%S')}.out")
+            log_file = str(PATH_NOHUP_OUT_DIR / f"log_simba_ppo_{env_name}_seed{seed}_{time.strftime('%Y%m%d_%H%M%S')}.out")
             full_cmd = ["nohup"] + cmd + [">", log_file, "2>&1", "&", "echo", "$!"]
             pid = subprocess.check_output(" ".join(full_cmd), shell=True).decode().strip()
             # os.system(" ".join(full_cmd))
