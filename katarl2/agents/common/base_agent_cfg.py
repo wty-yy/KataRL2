@@ -60,6 +60,14 @@ def get_full_policy_name(cfg: BaseAgentConfig) -> str:
         if cfg.origin_agent:
             name += '_OrgNet'
     if cfg.algo_name.lower() == 'ppo' and cfg.policy_name.lower() == 'basic':
-        if cfg.norm_network:
-            name += '_NormNet'
+        if cfg.layer_norm_network:
+            name += '_LN'
+        if cfg.instance_norm_network:
+            name += '_IN'
+        if cfg.norm_before_activate_network:
+            name += '_NBA'
+        if cfg.optimizer != 'adam':
+            name += f'_{cfg.optimizer}'
+        if cfg.weight_decay != 0.0:
+            name += '_WD'
     return name

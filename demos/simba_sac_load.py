@@ -3,7 +3,7 @@ SimbaSAC (from simba)
 启动脚本请用: bash ./benchmarks/simba_sac_run_experiments.py
 查看可用参数: python ./demos/simba_sac.py --help
 单独启动训练:
-python ./demos/simba_sac_load.py --env.env-type gymnasium --env.env-name Humanoid-v4
+python ./demos/simba_sac_load.py --env.env-type dmc --env.env-name dog-trot
 """
 import sys
 from pathlib import Path
@@ -33,7 +33,7 @@ if __name__ == '__main__':
 
     """ Eval """
     print("[INFO] Start Evaluation.")
-    agent = SimbaSAC.load("/data/user/wutianyang/Coding/KataRL2/logs/sac_v1/simba_continuous_mlp/Humanoid-v4__gymnasium/seed_2_2/20250811-234639/ckpts/sac-994999.pkl", args.agent.device)
+    agent = SimbaSAC.load("/data/user/wutianyang/Coding/KataRL2/logs/sac/simba_continuous_mlp/dog-trot__dmc/seed_0_0/20250815-030515/ckpts/sac-990000.pkl", args.agent.device)
     args.env.num_envs = 1
     args.env.capture_video = True
     _, eval_envs = make_envs(args.env)
@@ -60,3 +60,4 @@ if __name__ == '__main__':
             swanlab.log({"videos": swanlab.Video(str(path))})
             path.unlink()
     print("[INFO] Finish evaluating.")
+    eval_envs.close()

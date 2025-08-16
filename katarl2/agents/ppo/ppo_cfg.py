@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 from dataclasses import dataclass
 from katarl2.agents.common.base_agent_cfg import BaseAgentConfig
 
@@ -51,7 +51,7 @@ class PPOConfig(BaseAgentConfig):
     # the maximum norm for the gradient clipping
     max_grad_norm: float = 0.5
     # the target KL divergence threshold
-    target_kl: float = None
+    target_kl: Optional[float] = None
 
     """ these params will be filled in runtime """
     # the batch size (computed in runtime)
@@ -62,4 +62,9 @@ class PPOConfig(BaseAgentConfig):
     num_iterations: int = 0
 
     """ DIY """
-    norm_network: bool = False
+    layer_norm_network: bool = False
+    instance_norm_network: bool = False
+    norm_before_activate_network: bool = False
+    weight_decay: float = 0.0
+    optimizer: Literal['adam', 'adamw'] = 'adam'
+

@@ -17,11 +17,20 @@ P.S.
 2. 加入更高效的envpool的Atari环境
 3. 加入PPO算法, 确定和cleanrl曲线一致
 4. 在PPO中测试10个Atari环境的三个种子
-5. 在PPO中加入Simba, 基本没有提升, 4个环境上前期有提升, 后期均不如原版
+5. 在PPO中加入Simba, 基本打平手, 4个环境上前期有提升, 后期和原版类似
+
+后续对这几个模型进行8环境3种子测试 (192个测试)：
+1. basic ppo (running)
+2. basic ppo IN (running)
+3. basic ppo LN (wait 3h)
+4. basic ppo IN-NBA (wait 3h)
+5. simba ppo LN-NBA (wait 6h)
+6. basic ppo adamW (wait 6h)
+7. simba ppo (wait 9h)
+8. simba ppo orgNet (wait 9h)
 
 P.S.
 1. 由于游戏貌似可能能无限玩下去, Breakout和Phoenix发现, 因此限制最大步数为50000步
+2. 验证时, 如果固定episode次数验证且开多环境并行验证, 则总episode次数应该是eval_episode*num_eval_envs (如果总episode次数为eval_episdoe, 则环境并行方差很大)
 
 TODO:
-- [ ] 单独测试Simba中的rms是否有效
-- [ ] 测试PPO的CNN架构, 加入LN和BN

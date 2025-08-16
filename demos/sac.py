@@ -48,6 +48,7 @@ if __name__ == '__main__':
     path_ckpt = agent.save()
     del agent
     envs.close()
+    eval_envs.close()
     print("[INFO] Finish Training.")
 
     """ Eval Video """
@@ -69,3 +70,4 @@ if __name__ == '__main__':
             swanlab.log({"videos": swanlab.Video(str(path))})
             path.unlink()
     print("[INFO] Finish evaluating.")
+    eval_envs.close()

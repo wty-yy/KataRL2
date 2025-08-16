@@ -15,7 +15,11 @@ import numpy as np
 from tqdm import tqdm
 from pathlib import Path
 from katarl2.agents.common.base_agent import BaseAgent
-from katarl2.agents.ppo.model.cnn_discrete import Agent, Agent_GN_LN
+from katarl2.agents.ppo.model.cnn_discrete import (
+    Agent,
+    Agent_IN, Agent_IN_before_norm,
+    Agent_LN, Agent_LN_before_norm,
+)
 from katarl2.common import path_manager
 from katarl2.common.utils import cvt_string_time
 
@@ -46,11 +50,25 @@ class PPO(BaseAgent):
         torch.backends.cudnn.deterministic = True
 
         """ Model """
-        if cfg.norm_network:
-            self.agent = Agent_GN_LN(self.act_space).to(self.device)
+        if cfg.layer_norm_network and not cfg.norm_before_activate_network:
+            print("[INFO] Use default Agent_LN")
+            self.agent = Agent_LN(self.act_space).to(self.device)
+        elif cfg.layer_norm_network and cfg.norm_before_activate_network:
+            print("[INFO] Use default Agent_LN_before_norm")
+            self.agent = Agent_LN_before_norm(self.act_space).to(self.device)
+        elif cfg.instance_norm_network and not cfg.norm_before_activate_network:
+            print("[INFO] Use default Agent_IN")
+            self.agent = Agent_IN(self.act_space).to(self.device)
+        elif cfg.instance_norm_network and cfg.norm_before_activate_network:
+            print("[INFO] Use default Agent_IN_before_norm")
+            self.agent = Agent_IN_before_norm(self.act_space).to(self.device)
         else:
+            print("[INFO] Use default agent")
             self.agent = Agent(self.act_space).to(self.device)
-        self.optimizer = optim.Adam(self.agent.parameters(), lr=cfg.learning_rate, eps=1e-5)
+        if cfg.optimizer == 'adam':
+            self.optimizer = optim.Adam(self.agent.parameters(), lr=cfg.learning_rate, eps=1e-5, weight_decay=cfg.weight_decay)
+        elif cfg.optimizer == 'adamw':
+            self.optimizer = optim.AdamW(self.agent.parameters(), lr=cfg.learning_rate, eps=1e-5, weight_decay=cfg.weight_decay)
 
         """ Buffer """
         self.obs = torch.zeros((cfg.num_steps, cfg.num_envs) + self.obs_space.shape).to(self.device)
@@ -70,7 +88,7 @@ class PPO(BaseAgent):
         self.env_step = 0
         self.interaction_step = 0
         self.train_step = 0
-        start_time = time.time()
+        fixed_start_time = start_time = time.time()
         last_eval_interaction_step = 0
         last_log_interaction_step = 0
         last_verbose_time = 0
@@ -219,11 +237,13 @@ class PPO(BaseAgent):
             
             """ Evaluating """
             if last_eval_interaction_step == 0 or self.interaction_step - last_eval_interaction_step >= cfg.eval_per_interaction_step:
+                print("[INFO] Start Evaluation...", end='', flush=True)
                 t1 = time.time()
                 last_eval_interaction_step = self.interaction_step
                 self.eval(env_step=self.env_step)
                 eval_time = time.time() - t1
                 start_time += eval_time
+                print(f"Eval time used: {cvt_string_time(eval_time)}, total time used: {cvt_string_time(time.time() - fixed_start_time)}")
 
     def save(self, path: str | Path = 'default'):
         to_cpu = lambda data: {k: v.to('cpu') for k, v in data.items()}

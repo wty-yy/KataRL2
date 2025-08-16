@@ -26,7 +26,7 @@ from pprint import pprint
 @dataclass
 class PPOEnvConfig(EnvConfig):
     num_envs: int = 8
-    eval_env_num: int = 12
+    num_eval_envs: int = 4
 
 @dataclass
 class Args:
@@ -50,6 +50,7 @@ if __name__ == '__main__':
     path_ckpt = agent.save()
     del agent
     envs.close()
+    eval_envs.close()
     print("[INFO] Finish Training.")
 
     """ Eval """
@@ -71,3 +72,4 @@ if __name__ == '__main__':
             swanlab.log({"videos": swanlab.Video(str(path))})
             path.unlink()
     print("[INFO] Finish evaluating.")
+    eval_envs.close()

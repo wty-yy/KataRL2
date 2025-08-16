@@ -45,36 +45,127 @@ class Agent(ActorCritic):
         )
         self.actor = layer_init(nn.Linear(512, action_space.n), std=0.01)
         self.critic = layer_init(nn.Linear(512, 1), std=1)
-
-class Agent_GN_LN(ActorCritic):
+        
+class Agent_IN(ActorCritic):
     def __init__(self, action_space: gym.spaces.Discrete):
         super().__init__()
         self.network = nn.Sequential(
             layer_init(nn.Conv2d(4, 32, 8, stride=4)),
             nn.Mish(),
-            nn.GroupNorm(4, 32),
+            nn.GroupNorm(1, 32),
             
             layer_init(nn.Conv2d(32, 64, 4, stride=2)),
-            nn.LeakyReLU(0.1),
-            nn.GroupNorm(8, 64),
+            nn.Mish(),
+            nn.GroupNorm(1, 64),
             
             layer_init(nn.Conv2d(64, 64, 3, stride=1)),
-            nn.ReLU(),
-            nn.GroupNorm(8, 64),
+            nn.Mish(),
+            nn.GroupNorm(1, 64),
             nn.Flatten(),
             
             layer_init(nn.Linear(64 * 7 * 7, 512)),
             nn.ReLU(),
-            nn.LayerNorm(512)
+            nn.LayerNorm(512),
         )
 
         self.actor = nn.Sequential(
-            nn.ReLU(),
             layer_init(nn.Linear(512, action_space.n), std=0.01)
         )
 
         self.critic = nn.Sequential(
-            nn.Mish(),
             layer_init(nn.Linear(512, 1), std=1)
         )
         
+class Agent_LN(ActorCritic):
+    def __init__(self, action_space: gym.spaces.Discrete):
+        super().__init__()
+        self.network = nn.Sequential(
+            layer_init(nn.Conv2d(4, 32, 8, stride=4)),  # (4, 84, 84) -> (32, 20, 20)
+            nn.Mish(),
+            nn.LayerNorm([32, 20, 20]),
+            
+            layer_init(nn.Conv2d(32, 64, 4, stride=2)),  # (64, 9, 9)
+            nn.Mish(),
+            nn.LayerNorm([64, 9, 9]),
+            
+            layer_init(nn.Conv2d(64, 64, 3, stride=1)),  # (64, 7, 7)
+            nn.Mish(),
+            nn.LayerNorm([64, 7, 7]),
+            nn.Flatten(),
+            
+            layer_init(nn.Linear(64 * 7 * 7, 512)),
+            nn.ReLU(),
+            nn.LayerNorm(512),
+        )
+
+        self.actor = nn.Sequential(
+            layer_init(nn.Linear(512, action_space.n), std=0.01)
+        )
+
+        self.critic = nn.Sequential(
+            layer_init(nn.Linear(512, 1), std=1)
+        )
+        
+class Agent_IN_before_norm(ActorCritic):
+    def __init__(self, action_space: gym.spaces.Discrete):
+        super().__init__()
+        self.network = nn.Sequential(
+            layer_init(nn.Conv2d(4, 32, 8, stride=4)),
+            nn.GroupNorm(1, 32),
+            nn.Mish(),
+            
+            layer_init(nn.Conv2d(32, 64, 4, stride=2)),
+            nn.GroupNorm(1, 64),
+            nn.Mish(),
+            
+            layer_init(nn.Conv2d(64, 64, 3, stride=1)),
+            nn.GroupNorm(1, 64),
+            nn.Mish(),
+            nn.Flatten(),
+            
+            layer_init(nn.Linear(64 * 7 * 7, 512)),
+            nn.LayerNorm(512),
+            nn.ReLU(),
+        )
+
+        self.actor = nn.Sequential(
+            layer_init(nn.Linear(512, action_space.n), std=0.01)
+        )
+
+        self.critic = nn.Sequential(
+            layer_init(nn.Linear(512, 1), std=1)
+        )
+        
+class Agent_LN_before_norm(ActorCritic):
+    def __init__(self, action_space: gym.spaces.Discrete):
+        super().__init__()
+        self.network = nn.Sequential(
+            layer_init(nn.Conv2d(4, 32, 8, stride=4)),  # (4, 84, 84) -> (32, 20, 20)
+            nn.LayerNorm([32, 20, 20]),
+            nn.Mish(),
+            
+            layer_init(nn.Conv2d(32, 64, 4, stride=2)),  # (64, 9, 9)
+            nn.LayerNorm([64, 9, 9]),
+            nn.Mish(),
+            
+            layer_init(nn.Conv2d(64, 64, 3, stride=1)),  # (64, 7, 7)
+            nn.LayerNorm([64, 7, 7]),
+            nn.Mish(),
+            nn.Flatten(),
+            
+            layer_init(nn.Linear(64 * 7 * 7, 512)),
+            nn.LayerNorm(512),
+            nn.ReLU(),
+        )
+
+        self.actor = nn.Sequential(
+            layer_init(nn.Linear(512, action_space.n), std=0.01)
+        )
+
+        self.critic = nn.Sequential(
+            layer_init(nn.Linear(512, 1), std=1)
+        )
+        
+
+
+

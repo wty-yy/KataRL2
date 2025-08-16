@@ -240,11 +240,13 @@ class SimbaPPO(BaseAgent):
             
             """ Evaluating """
             if last_eval_interaction_step == 0 or self.interaction_step - last_eval_interaction_step >= cfg.eval_per_interaction_step:
+                print("[INFO] Start Evaluation...", end='', flush=True)
                 t1 = time.time()
                 last_eval_interaction_step = self.interaction_step
                 self.eval(env_step=self.env_step)
                 eval_time = time.time() - t1
                 start_time += eval_time
+                print(f"Eval time used: {cvt_string_time(eval_time)}, total time used: {cvt_string_time(time.time() - fixed_start_time)}")
 
     def save(self, path: str | Path = 'default'):
         to_cpu = lambda data: {k: v.to('cpu') for k, v in data.items()}
