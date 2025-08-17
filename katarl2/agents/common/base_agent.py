@@ -72,7 +72,9 @@ class BaseAgent:
         # 超出步数触发截断 envpool 的 Atari 中可能发生
         if len(episodic_returns) < total_eval_episodes:
             if 'episodic_info' in infos:
-                mask = 1 - final_info['_episode']
+                mask = np.ones_like(infos['episodic_info']['r'], dtype=bool)
+                if 'final_info' in infos:
+                    mask = 1 - infos['final_info']['_episode']
                 n = min(total_eval_episodes - len(episodic_returns), np.sum(mask))
                 episodic_returns.extend(np.sort(infos['episodic_info']['r'][mask])[-n:].tolist())
                 episodic_lens.extend(np.sort(infos['episodic_info']['l'][mask])[-n:].tolist())

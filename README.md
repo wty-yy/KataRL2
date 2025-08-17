@@ -77,3 +77,9 @@ pip install -r requirements/requirements_full.txt
 ## 可能的报错
 1. `mujoco.FatalError: an OpenGL platform library has not been loaded into this process, this most likely means that a valid OpenGL context has not been created before mjr_makeContext was called`
     参考[CSDN - 关于在vscode运行mujoco报错...](https://blog.csdn.net/weixin_43807119/article/details/141814122), 设置环境变量`conda env config vars set MUJOCO_GL=egl`, 重启`conda`环境即可
+
+## 完成的实验
+### SAC vs Simba
+![sac_basic_vs_simba](./assets/sac_basic_vs_simba.png)
+### PPO vs Simba vs DIY
+![ppo_basic_vs_simba_vs_diy](./assets/ppo_basic_vs_simba_vs_diy.png)

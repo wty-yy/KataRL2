@@ -28,7 +28,7 @@ class BaseAgentConfig:
 
     """ Logger """
     # Log every n interaction steps
-    log_per_interaction_step: int = 2000
+    log_per_interaction_step: int = 5000
 
     """ Training / Evaluating """
     # Total environment steps
@@ -36,7 +36,7 @@ class BaseAgentConfig:
     # Total agent interaction steps (Don't setup this param in CLI)
     num_interaction_steps: Any = None
     # Evaluation in learn() function
-    eval_per_interaction_step: int = 10000
+    eval_per_interaction_step: int = 25000
     # Number of evaluation episodes
     num_eval_episodes: int = 10
 

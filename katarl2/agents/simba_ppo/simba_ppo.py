@@ -86,7 +86,7 @@ class SimbaPPO(BaseAgent):
         self.env_step = 0
         self.interaction_step = 0
         self.train_step = 0
-        start_time = time.time()
+        fixed_start_time = start_time = time.time()
         last_eval_interaction_step = 0
         last_log_interaction_step = 0
         last_verbose_time = 0

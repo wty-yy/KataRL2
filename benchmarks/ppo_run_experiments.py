@@ -6,7 +6,7 @@ from katarl2.common.utils import cvt_string_time
 PATH_NOHUP_OUT_DIR = Path(__file__).parents[1] / "logs/runs"
 PATH_NOHUP_OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-sleep_time = 6 * 3600
+sleep_time = 0
 
 # 配置任务
 tasks = [

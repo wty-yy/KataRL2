@@ -66,8 +66,10 @@ class PPO(BaseAgent):
             print("[INFO] Use default agent")
             self.agent = Agent(self.act_space).to(self.device)
         if cfg.optimizer == 'adam':
+            print(f"Use Adam, weight_decay={cfg.weight_decay}")
             self.optimizer = optim.Adam(self.agent.parameters(), lr=cfg.learning_rate, eps=1e-5, weight_decay=cfg.weight_decay)
         elif cfg.optimizer == 'adamw':
+            print(f"Use AdamW, weight_decay={cfg.weight_decay}")
             self.optimizer = optim.AdamW(self.agent.parameters(), lr=cfg.learning_rate, eps=1e-5, weight_decay=cfg.weight_decay)
 
         """ Buffer """
