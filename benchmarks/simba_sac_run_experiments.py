@@ -17,17 +17,22 @@ tasks = [
     ("gymnasium", "HalfCheetah-v4",     [1, 1, 1], [0, 1, 2]),
     ("gymnasium", "HumanoidStandup-v4", [1, 1, 1], [0, 1, 2]),
     ("gymnasium", "Humanoid-v4",        [1, 1, 1], [0, 1, 2]),
+    # # DMC EASY
     ("dmc", "walker-walk",              [2, 2, 2], [0, 1, 2]),
+    ("dmc", "walker-run",              [4, 4, 4], [0, 1, 2]),
+    # DMC HARD
     ("dmc", "humanoid-walk",            [3, 3, 3], [0, 1, 2]),
     ("dmc", "dog-walk",                 [4, 4, 4], [0, 1, 2]),
     ("dmc", "humanoid-run",             [2, 2, 2], [0, 1, 2]),
     ("dmc", "dog-run",                  [2, 2, 2], [0, 1, 2]),
     ("dmc", "dog-trot",                 [2, 2, 2], [0, 1, 2]),
+    ("dmc", "humanoid-stand",           [2, 2, 2], [0, 1, 2]),
+    ("dmc", "dog-stand",                [3, 3, 3], [0, 1, 2]),
 ]
 
 # 额外参数（可选）
 extra_args = [
-    "--logger.use-swanlab",
+    # "--logger.use-swanlab",
     # "--logger.use-wandb",
     "--agent.verbose 1",
     # "--debug",

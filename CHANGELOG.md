@@ -19,15 +19,14 @@ P.S.
 4. 在PPO中测试10个Atari环境的三个种子
 5. 在PPO中加入Simba, 基本打平手, 4个环境上前期有提升, 后期和原版类似
 
-后续对这几个模型进行8环境3种子测试 (192个测试)：
+完成对这些模型进行8环境3种子测试 (192个测试)：
 1. basic ppo
 2. basic ppo IN
 3. basic ppo LN
 4. basic ppo IN-NBA
 5. simba ppo LN-NBA
-6. basic ppo adamW
-7. simba ppo
-8. simba ppo orgNet
+6. simba ppo
+7. simba ppo orgNet
 测试结果在图[ppo_basic_vs_simba_vs_diy.png](./assets/ppo_basic_vs_simba_vs_diy.png)中
 
 P.S.

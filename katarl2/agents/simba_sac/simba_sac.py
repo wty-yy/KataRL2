@@ -145,7 +145,10 @@ class SimbaSAC(BaseAgent):
             obs = next_obs
             
             """ Evaluating """
-            if self.interaction_step % cfg.eval_per_interaction_step == 0:
+            if (
+                self.interaction_step % cfg.eval_per_interaction_step == 0 or
+                self.interaction_step == cfg.num_interaction_steps - 1
+            ):
                 self.eval()
 
             if self.interaction_step < cfg.learning_starts:

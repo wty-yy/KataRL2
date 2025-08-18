@@ -238,7 +238,11 @@ class PPO(BaseAgent):
                     print(f"[INFO] {iteration}/{cfg.num_iterations} iters, SPS: {SPS}, [{cvt_string_time(time_used)}<{cvt_string_time(time_left)}]")
             
             """ Evaluating """
-            if last_eval_interaction_step == 0 or self.interaction_step - last_eval_interaction_step >= cfg.eval_per_interaction_step:
+            if (
+                last_eval_interaction_step == 0 or
+                self.interaction_step - last_eval_interaction_step >= cfg.eval_per_interaction_step or
+                iteration == cfg.num_iterations
+            ):
                 print("[INFO] Start Evaluation...", end='', flush=True)
                 t1 = time.time()
                 last_eval_interaction_step = self.interaction_step
