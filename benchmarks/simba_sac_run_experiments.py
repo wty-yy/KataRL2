@@ -11,23 +11,27 @@ PATH_NOHUP_OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # 配置任务
 tasks = [
-    # (env_type, env_name, cuda_list, seed_list)
-    ("gymnasium", "Hopper-v4",          [0, 0, 0], [0, 1, 2]),
-    ("gymnasium", "Ant-v4",             [0, 0, 1], [0, 1, 2]),
-    ("gymnasium", "HalfCheetah-v4",     [1, 1, 1], [0, 1, 2]),
-    ("gymnasium", "HumanoidStandup-v4", [1, 1, 1], [0, 1, 2]),
-    ("gymnasium", "Humanoid-v4",        [1, 1, 1], [0, 1, 2]),
-    # # DMC EASY
-    ("dmc", "walker-walk",              [2, 2, 2], [0, 1, 2]),
-    ("dmc", "walker-run",              [4, 4, 4], [0, 1, 2]),
+    # (env_subcommand, env_name, cuda_list, seed_list)
+    # MujocoPy
+    ("env:gym", "Ant-v4",                   [1, 1, 1], [0, 1, 2]),
+    ("env:gym", "HalfCheetah-v4",           [2, 2, 2], [0, 1, 2]),
+    ("env:gym", "Hopper-v4",                [0, 0, 0], [0, 1, 2]),
+    ("env:gym", "HumanoidStandup-v4",       [3, 3, 3], [0, 1, 2]),
+    ("env:gym", "Humanoid-v4",              [4, 4, 4], [0, 1, 2]),
+    ("env:gym", "InvertedPendulum-v4",      [1, 1, 1], [0, 1, 2]),
+    ("env:gym", "Pusher-v5",                [2, 2, 2], [0, 1, 2]),
+    ("env:gym", "Walker2d-v4",              [2, 2, 2], [0, 1, 2]),
+    # DMC EASY
+    ("env:dmc", "walker-walk",              [2, 2, 2], [0, 1, 2]),
+    ("env:dmc", "walker-run",               [4, 4, 4], [0, 1, 2]),
     # DMC HARD
-    ("dmc", "humanoid-walk",            [3, 3, 3], [0, 1, 2]),
-    ("dmc", "dog-walk",                 [4, 4, 4], [0, 1, 2]),
-    ("dmc", "humanoid-run",             [2, 2, 2], [0, 1, 2]),
-    ("dmc", "dog-run",                  [2, 2, 2], [0, 1, 2]),
-    ("dmc", "dog-trot",                 [2, 2, 2], [0, 1, 2]),
-    ("dmc", "humanoid-stand",           [2, 2, 2], [0, 1, 2]),
-    ("dmc", "dog-stand",                [3, 3, 3], [0, 1, 2]),
+    ("env:dmc", "humanoid-walk",            [3, 3, 3], [0, 1, 2]),
+    ("env:dmc", "dog-walk",                 [4, 4, 4], [0, 1, 2]),
+    ("env:dmc", "humanoid-run",             [2, 2, 2], [0, 1, 2]),
+    ("env:dmc", "dog-run",                  [2, 2, 2], [0, 1, 2]),
+    ("env:dmc", "dog-trot",                 [2, 2, 2], [0, 1, 2]),
+    ("env:dmc", "humanoid-stand",           [2, 2, 2], [0, 1, 2]),
+    ("env:dmc", "dog-stand",                [3, 3, 3], [0, 1, 2]),
 ]
 
 # 额外参数（可选）
@@ -49,10 +53,10 @@ def run_command(cmd):
 
 if __name__ == "__main__":
     total = 0
-    for env_type, env_name, cuda_list, seed_list in tasks:
+    for env_subcommand, env_name, cuda_list, seed_list in tasks:
         for cuda_id, seed in zip(cuda_list, seed_list):
             cmd = base_cmd + [
-                "--env.env-type", env_type,
+                env_subcommand,
                 "--env.env-name", env_name,
                 "--env.seed", str(seed),
                 "--agent.seed", str(seed),
@@ -60,7 +64,7 @@ if __name__ == "__main__":
             ] + extra_args
 
             # 用 nohup 启动并输出到对应 log 文件
-            log_file = str(PATH_NOHUP_OUT_DIR / f"log_simba_sac_{env_name}_seed{seed}_{time.strftime('%Y%m%d_%H%M%S')}.out")
+            log_file = str(PATH_NOHUP_OUT_DIR / f"simba_sac_{env_subcommand}_{env_name}_seed{seed}_{time.strftime('%Y%m%d_%H%M%S')}.log")
             full_cmd = ["nohup"] + cmd + [">", log_file, "2>&1", "&", "echo", "$!"]
             pid = subprocess.check_output(" ".join(full_cmd), shell=True).decode().strip()
             # os.system(" ".join(full_cmd))

@@ -1,3 +1,4 @@
+from pathlib import Path
 import gymnasium as gym
 from typing import Literal, Optional, Annotated, Any
 from dataclasses import dataclass
@@ -5,63 +6,9 @@ from dataclasses import dataclass
 @dataclass
 class EnvConfig:
     # Environment type
-    env_type: Literal['gymnasium', 'dmc', 'envpool']
+    env_type: str
     # Environment name
-    env_name: Literal[
-        # gymnasium
-        'Hopper-v4', 'Ant-v4', 'HalfCheetah-v4', 'HumanoidStandup-v4', 'Humanoid-v4',
-
-        # dmc
-        'acrobot-swingup',
-        'cartpole-balance',
-        'cartpole-balance_sparse',
-        'cartpole-swingup',
-        'cartpole-swingup_sparse',
-        'cheetah-run',
-        'finger-spin',
-        'finger-turn_easy',
-        'finger-turn_hard',
-        'fish-swim',
-        'hopper-hop',
-        'hopper-stand',
-        'pendulum-swingup',
-        'quadruped-walk',
-        'quadruped-run',
-        'reacher-easy',
-        'reacher-hard',
-        'walker-stand',
-        'walker-walk',
-        'walker-run',
-
-        "cartpole-balance_sparse",
-        "cartpole-swingup_sparse",
-        "ball_in_cup-catch",
-        "finger-spin",
-        "finger-turn_easy",
-        "finger-turn_hard",
-        "reacher-easy",
-        "reacher-hard",
-
-        'humanoid-stand',
-        'humanoid-walk',
-        'humanoid-run',
-        'dog-stand',
-        'dog-walk',
-        'dog-run',
-        'dog-trot',
-
-        # envpool
-        'Assault-v5',
-        'Asterix-v5',
-        'Boxing-v5',
-        'Breakout-v5',
-        'Phoenix-v5',
-        'Pong-v5',
-        'Qbert-v5',
-        'Seaquest-v5',
-        'UpNDown-v5',
-        'WizardOfWor-v5',
-    ]
+    env_name: str
     # Number of parallel environments (Train)
     num_envs: int = 1
     # Number of parallel environments (Evaluate)
@@ -70,7 +17,7 @@ class EnvConfig:
     capture_video: bool = False
     # Random seed for environment
     seed: int = 42
-    """ Below params update by algo """
+    """ Wrappers Parameters (Update by Algo) """
     # Max episode steps (optional)
     max_episode_steps: Optional[int] = None
     # Action repeat
@@ -79,6 +26,13 @@ class EnvConfig:
     rescale_action: Optional[bool] = None
     # Reward scale factor
     reward_scale: float = 1.0
+    """ Atari Wrappers """
+    # Max and Skip
+    max_and_skip: int = 4
+    # NoopReset, MaxAndSkip, EpisodicLife, FireReset, ClipReward, ResizeObservation, GrayScaleObservation, FrameStack
+    atari_wrappers: bool = False
+    """ Logger (Update by env_maker) """
+    path_logs: Optional[Path] = None
 
 def get_env_name(cfg: EnvConfig) -> str:
     """ eg: 'Hoop-v4__gymnasium' """

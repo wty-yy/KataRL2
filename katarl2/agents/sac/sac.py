@@ -10,6 +10,7 @@ from tqdm import tqdm
 import gymnasium as gym
 from pathlib import Path
 from torch.utils.tensorboard import SummaryWriter
+from katarl2.agents.common.utils import set_seed_everywhere, enable_deterministic_run
 from katarl2.agents.sac.sac_cfg import SACConfig
 from katarl2.agents.sac.model.mlp_continuous import Actor, SoftQNetwork
 from katarl2.common import path_manager
@@ -35,10 +36,9 @@ class SAC(BaseAgent):
         assert isinstance(self.act_space, gym.spaces.Box), f"[ERROR] Only continuous action space is supported, but current action space={type(self.act_space)}"
 
         """ Seed """
-        random.seed(self.cfg.seed)
-        np.random.seed(self.cfg.seed)
-        torch.manual_seed(self.cfg.seed)
-        torch.backends.cudnn.deterministic = True
+        set_seed_everywhere(cfg.seed)
+        if cfg.deterministic:
+            enable_deterministic_run()
 
         """ Model """
         self.actor = Actor(self.obs_space, self.act_space).to(self.device)

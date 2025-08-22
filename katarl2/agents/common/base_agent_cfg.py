@@ -15,6 +15,8 @@ class BaseAgentConfig:
     network_name: Literal['MLP', 'CNN+MLP']
     # Random seed
     seed: int = 42
+    # Deterministic for cudnn (Maybe slow down)
+    deterministic: bool = False
     # Output train/eval details, level 0,1,2, message from low to high
     verbose: int = 0
     # Pytorch model device, cpu, cuda, cuda:0, cuda:1, ...

@@ -63,12 +63,12 @@ class BaseAgent:
             obs, rewards, terminations, truncations, infos = self.eval_envs.step(action)
             max_total_interaction_steps -= 1
             
-            if "final_info" in infos:
+            if "final_info" in infos and 'episode' in infos['final_info']:
                 final_info = infos['final_info']
                 mask = final_info['_episode']
                 episodic_returns.extend(final_info['episode']['r'][mask].tolist())
                 episodic_lens.extend(final_info['episode']['l'][mask].tolist())
-
+            
         # 超出步数触发截断 envpool 的 Atari 中可能发生
         if len(episodic_returns) < total_eval_episodes:
             if 'episodic_info' in infos:

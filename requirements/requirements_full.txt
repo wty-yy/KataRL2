@@ -2,6 +2,7 @@ torch
 gymnasium==1.2.0
 gymnasium[mujoco]
 gymnasium[other]
+gymnasium[atari]
 tyro
 tensorboard
 matplotlib

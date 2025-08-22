@@ -26,6 +26,10 @@ class SACConfig(BaseAgentConfig):
     obs_space: Any = None
     act_space: Any = None
 
+    """ Training """
+    # Total environment steps
+    num_env_steps: int = int(1e6)
+
     """ hyper-parameters """
     # the replay memory buffer size
     buffer_size: int = int(1e6)

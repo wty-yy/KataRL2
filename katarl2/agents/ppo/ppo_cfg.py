@@ -21,7 +21,7 @@ class PPOConfig(BaseAgentConfig):
 
     """ Training / Evaluating """
     # Total environment steps
-    num_env_steps: int = int(1e7)
+    num_env_steps: int = int(4e7)
 
     """ hyper-parameters (each algorithm has diff params, here are some examples) """
     # the learning rate of the optimizer

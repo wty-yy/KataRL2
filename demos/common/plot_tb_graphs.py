@@ -243,7 +243,7 @@ def main():
 
     env_list = sorted(env_to_algo_series.keys())
     n_envs = len(env_list)
-    ncols = 2
+    ncols = 3
     nrows = math.ceil(n_envs / ncols)
 
     fig, axes = plt.subplots(nrows, ncols, figsize=(7 * ncols, 4.5 * nrows), dpi=args.dpi)

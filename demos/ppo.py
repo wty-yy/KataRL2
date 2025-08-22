@@ -1,9 +1,10 @@
 """
 PPO (from cleanrl)
-启动脚本请用: bash ./benchmarks/ppo_run_experiments.py
+启动脚本: bash ./benchmarks/ppo_run_experiments.py
 查看可用参数: python ./demos/ppo.py --help
-单独启动训练:
-python ./demos/ppo.py --env.env-type envpool --env.env-name Breakout-v5 --agent.num-env-steps 100000 --agent.verbose 2 --debug
+单独启动训练 (子命令选择 {env:envpool, env:gym}):
+python ./demos/ppo.py env:envpool --env.env-name Breakout-v5 --agent.num-env-steps 100000 --agent.verbose 2 --debug
+python ./demos/ppo.py env:gym --env.env-name Breakout-v5 --agent.num-env-steps 10000 --agent.verbose 2 --agent.device cuda:1 --debug
 """
 import sys
 from pathlib import Path
@@ -14,9 +15,10 @@ os.environ["OMP_NUM_THREADS"] = "2"
 os.environ["MKL_NUM_THREADS"] = "2"
 
 import tyro
+from typing import Union, Annotated
 from dataclasses import dataclass
 from katarl2.agents import PPO, PPOConfig
-from katarl2.envs.common.env_cfg import EnvConfig
+from katarl2.envs import EnvpoolAtariConfig, GymAtariEnvConfig
 from katarl2.common.logger import LogConfig, get_tensorboard_writer
 from katarl2.envs.env_maker import make_envs
 from katarl2.common import path_manager
@@ -24,20 +26,28 @@ from katarl2.common.video_process import cvt_to_gif
 from pprint import pprint
 
 @dataclass
-class PPOEnvConfig(EnvConfig):
+class PPOEnvpoolAtariEnvConfig(EnvpoolAtariConfig):
+    num_envs: int = 8
+    num_eval_envs: int = 4
+
+@dataclass
+class PPOGymAtariEnvConfig(GymAtariEnvConfig):
     num_envs: int = 8
     num_eval_envs: int = 4
 
 @dataclass
 class Args:
     agent: PPOConfig
-    env: PPOEnvConfig
+    env: Union[
+        Annotated[PPOEnvpoolAtariEnvConfig, tyro.conf.subcommand('envpool')],
+        Annotated[PPOGymAtariEnvConfig, tyro.conf.subcommand('gym')],
+    ]
     logger: LogConfig
     debug: bool = False
 
 if __name__ == '__main__':
     """ Preprocess """
-    args: Args = tyro.cli(Args)
+    args: Args = tyro.cli(Args, config=(tyro.conf.ConsolidateSubcommandArgs,))
     path_manager.build_path_logs(args.agent, args.env, args.debug)
     envs, eval_envs = make_envs(args.env)
     logger = get_tensorboard_writer(args.logger, args)
@@ -52,6 +62,7 @@ if __name__ == '__main__':
     envs.close()
     eval_envs.close()
     print("[INFO] Finish Training.")
+    exit()
 
     """ Eval """
     print("[INFO] Start Evaluation.")

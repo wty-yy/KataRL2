@@ -1,10 +1,10 @@
 """
 SimbaSAC (from simba)
-启动脚本请用: bash ./benchmarks/simba_sac_run_experiments.py
+启动脚本: bash ./benchmarks/simba_sac_run_experiments.py
 查看可用参数: python ./demos/simba_sac.py --help
-单独启动训练:
-python ./demos/simba_sac.py --env.env-type gymnasium --env.env-name Hopper-v4 --agent.num-env-steps 100000 --agent.verbose 2 
-python ./demos/simba_sac.py --env.env-type dmc --env.env-name walker-walk --agent.num-env-steps 100000 --agent.verbose 2 --agent.device cuda:1
+单独启动训练 (子命令选择 {env:gym, env:dmc}):
+python ./demos/simba_sac.py env:gym --env.env-name Hopper-v4 --agent.num-env-steps 100000 --agent.verbose 2 --debug
+python ./demos/simba_sac.py env:dmc --env.env-name walker-walk --agent.num-env-steps 100000 --agent.verbose 2 --agent.device cuda:1 --debug
 """
 import sys
 from pathlib import Path
@@ -16,9 +16,10 @@ os.environ["OMP_NUM_THREADS"] = "2"
 os.environ["MKL_NUM_THREADS"] = "2"
 
 import tyro
+from typing import Union, Annotated
 from dataclasses import dataclass
 from katarl2.agents import SimbaSAC, SimbaSACConfig
-from katarl2.envs.common.env_cfg import EnvConfig
+from katarl2.envs import DMCEnvConfig, GymMujocoEnvConfig
 from katarl2.common.logger import LogConfig, get_tensorboard_writer
 from katarl2.envs.env_maker import make_envs
 from katarl2.common import path_manager
@@ -26,7 +27,13 @@ from katarl2.common.video_process import cvt_to_gif
 from pprint import pprint
 
 @dataclass
-class SimbaEnvConfig(EnvConfig):
+class SimbaDMCEnvConfig(DMCEnvConfig):
+    max_episode_steps: int = 1000
+    action_repeat: int = 2
+    rescale_action: bool = True
+
+@dataclass
+class SimbaMujocoEnvConfig(GymMujocoEnvConfig):
     max_episode_steps: int = 1000
     action_repeat: int = 2
     rescale_action: bool = True
@@ -34,13 +41,16 @@ class SimbaEnvConfig(EnvConfig):
 @dataclass
 class Args:
     agent: SimbaSACConfig
-    env: SimbaEnvConfig
+    env: Union[
+        Annotated[SimbaDMCEnvConfig, tyro.conf.subcommand("dmc")],
+        Annotated[SimbaMujocoEnvConfig, tyro.conf.subcommand("gym")],
+    ]
     logger: LogConfig
     debug: bool = False
 
 if __name__ == '__main__':
     """ Preprocess """
-    args: Args = tyro.cli(Args)
+    args: Args = tyro.cli(Args, config=(tyro.conf.ConsolidateSubcommandArgs,))
     if args.env.env_type == 'gymnasium' and args.env.reward_scale == 1.0:
         print("[INFO] Gymnasium mujoco-py envs reward are not normalized, set reward_scale to 0.1")
         args.env.reward_scale = 0.1

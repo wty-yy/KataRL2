@@ -10,27 +10,29 @@ sleep_time = 0
 
 # 配置任务
 tasks = [
-    # (env_type, env_name, cuda_list, seed_list)
-    ("envpool", 'Assault-v5',          [0, 0, 0], [0, 1, 2]),
-    ("envpool", 'Asterix-v5',          [0, 0, 0], [0, 1, 2]),
-    ("envpool", 'Boxing-v5',           [1, 1, 1], [0, 1, 2]),
-    ("envpool", 'Breakout-v5',         [1, 1, 1], [0, 1, 2]),
-    ("envpool", 'Phoenix-v5',          [2, 2, 2], [0, 1, 2]),
-    ("envpool", 'Pong-v5',             [2, 2, 2], [0, 1, 2]),
-    ("envpool", 'Qbert-v5',            [3, 3, 3], [0, 1, 2]),
-    ("envpool", 'Seaquest-v5',         [3, 3, 3], [0, 1, 2]),
-
-    # ("envpool", 'Assault-v5',          [4, 4, 4], [0, 1, 2]),
-    # ("envpool", 'Asterix-v5',          [4, 4, 4], [0, 1, 2]),
-    # ("envpool", 'Boxing-v5',           [5, 5, 5], [0, 1, 2]),
-    # ("envpool", 'Breakout-v5',         [5, 5, 5], [0, 1, 2]),
-    # ("envpool", 'Phoenix-v5',          [6, 6, 6], [0, 1, 2]),
-    # ("envpool", 'Pong-v5',             [6, 6, 6], [0, 1, 2]),
-    # ("envpool", 'Qbert-v5',            [7, 7, 7], [0, 1, 2]),
-    # ("envpool", 'Seaquest-v5',         [7, 7, 7], [0, 1, 2]),
-
-    # ("envpool", 'UpNDown-v5',          [7, 7, 7], [0, 1, 2]),
-    # ("envpool", 'WizardOfWor-v5',      [7, 7, 7], [0, 1, 2]),
+    # (env_subcommand, env_name, cuda_list, seed_list)
+    # Envpool (no render)
+    ("env:envpool", 'Assault-v5',          [0, 0, 0], [0, 1, 2]),
+    ("env:envpool", 'Asterix-v5',          [0, 0, 0], [0, 1, 2]),
+    ("env:envpool", 'Boxing-v5',           [1, 1, 1], [0, 1, 2]),
+    ("env:envpool", 'Breakout-v5',         [1, 1, 1], [0, 1, 2]),
+    ("env:envpool", 'Phoenix-v5',          [2, 2, 2], [0, 1, 2]),
+    ("env:envpool", 'Pong-v5',             [2, 2, 2], [0, 1, 2]),
+    ("env:envpool", 'Qbert-v5',            [3, 3, 3], [0, 1, 2]),
+    ("env:envpool", 'Seaquest-v5',         [3, 3, 3], [0, 1, 2]),
+    ("env:envpool", 'UpNDown-v5',          [7, 7, 7], [0, 1, 2]),
+    ("env:envpool", 'WizardOfWor-v5',      [7, 7, 7], [0, 1, 2]),
+    # Gymnasium (can render)
+    ("env:gym", 'Assault-v5',          [0, 0, 0], [0, 1, 2]),
+    ("env:gym", 'Asterix-v5',          [0, 0, 0], [0, 1, 2]),
+    ("env:gym", 'Boxing-v5',           [1, 1, 1], [0, 1, 2]),
+    ("env:gym", 'Breakout-v5',         [1, 1, 1], [0, 1, 2]),
+    ("env:gym", 'Phoenix-v5',          [2, 2, 2], [0, 1, 2]),
+    ("env:gym", 'Pong-v5',             [2, 2, 2], [0, 1, 2]),
+    ("env:gym", 'Qbert-v5',            [3, 3, 3], [0, 1, 2]),
+    ("env:gym", 'Seaquest-v5',         [3, 3, 3], [0, 1, 2]),
+    ("env:gym", 'UpNDown-v5',          [7, 7, 7], [0, 1, 2]),
+    ("env:gym", 'WizardOfWor-v5',      [7, 7, 7], [0, 1, 2]),
 ]
 
 # 额外参数（可选）
@@ -59,10 +61,10 @@ def run_command(cmd):
 
 if __name__ == "__main__":
     total = 0
-    for env_type, env_name, cuda_list, seed_list in tasks:
+    for env_subcommand, env_name, cuda_list, seed_list in tasks:
         for cuda_id, seed in zip(cuda_list, seed_list):
             cmd = base_cmd + [
-                "--env.env-type", env_type,
+                env_subcommand,
                 "--env.env-name", env_name,
                 "--env.seed", str(seed),
                 "--agent.seed", str(seed),
@@ -70,7 +72,7 @@ if __name__ == "__main__":
             ] + extra_args
 
             # 用 nohup 启动并输出到对应 log 文件
-            log_file = str(PATH_NOHUP_OUT_DIR / f"log_simba_ppo_{env_name}_seed{seed}_{time.strftime('%Y%m%d_%H%M%S')}.out")
+            log_file = str(PATH_NOHUP_OUT_DIR / f"simba_ppo_{env_subcommand}_{env_name}_seed{seed}_{time.strftime('%Y%m%d_%H%M%S')}.log")
             full_cmd = ["nohup"] + cmd + [">", log_file, "2>&1", "&", "echo", "$!"]
             pid = subprocess.check_output(" ".join(full_cmd), shell=True).decode().strip()
             # os.system(" ".join(full_cmd))

@@ -14,6 +14,7 @@ import random
 import numpy as np
 from tqdm import tqdm
 from pathlib import Path
+from katarl2.agents.common.utils import set_seed_everywhere, enable_deterministic_run
 from katarl2.agents.common.base_agent import BaseAgent
 from katarl2.agents.ppo.model.cnn_discrete import (
     Agent,
@@ -37,17 +38,16 @@ class PPO(BaseAgent):
         if env_cfg is not None:
             cfg.batch_size = int(env_cfg.num_envs * cfg.num_steps)
             cfg.minibatch_size = int(cfg.batch_size // cfg.num_minibatches)
-            cfg.num_iterations = cfg.num_env_steps // cfg.batch_size
+            cfg.num_iterations = cfg.num_env_steps // env_cfg.max_and_skip // cfg.batch_size
 
         self.obs_space: gym.Space = cfg.obs_space
         self.act_space: gym.Space = cfg.act_space
         assert isinstance(self.act_space, gym.spaces.Discrete), f"[ERROR] Only discrete action space is supported, but current action space={type(self.act_space)}"
 
         """ Seed """
-        random.seed(cfg.seed)
-        np.random.seed(cfg.seed)
-        torch.manual_seed(cfg.seed)
-        torch.backends.cudnn.deterministic = True
+        set_seed_everywhere(cfg.seed)
+        if cfg.deterministic:
+            enable_deterministic_run()
 
         """ Model """
         if cfg.layer_norm_network and not cfg.norm_before_activate_network:
@@ -111,7 +111,7 @@ class PPO(BaseAgent):
                 self.optimizer.param_groups[0]["lr"] = lrnow
 
             for step in range(0, cfg.num_steps):
-                self.env_step += cfg.num_envs
+                self.env_step += cfg.num_envs * self.env_cfg.max_and_skip
                 self.interaction_step += 1
 
                 self.obs[step] = next_obs
@@ -234,7 +234,7 @@ class PPO(BaseAgent):
                     self.logger.add_scalar(name, value, self.env_step)
                 if cfg.verbose == 1 and time.time() - last_verbose_time > 10:
                     last_verbose_time = time.time()
-                    time_left = (cfg.num_iterations - iteration) * cfg.num_steps * cfg.num_envs / SPS
+                    time_left = (cfg.num_iterations - iteration) * cfg.num_steps * cfg.num_envs * self.env_cfg.max_and_skip / SPS
                     print(f"[INFO] {iteration}/{cfg.num_iterations} iters, SPS: {SPS}, [{cvt_string_time(time_used)}<{cvt_string_time(time_left)}]")
             
             """ Evaluating """

@@ -7,8 +7,14 @@ from katarl2.envs.env_dmc import make_dmc_env_from_cfg
 from katarl2.envs.env_envpool import make_envpool_envs_from_cfg
 from gymnasium.wrappers import TimeLimit, RescaleAction, TransformReward, RecordEpisodeStatistics
 from katarl2.envs.wrappers import RepeatAction
+from katarl2.envs.wrappers.atari_wrappers import apply_atari_wrappers
+from katarl2.common import path_manager
 
 def make_envs(cfg: EnvConfig) -> tuple[gym.vector.SyncVectorEnv, gym.vector.SyncVectorEnv]:
+    # Update logs path
+    if path_manager._PATH_LOGS:
+        cfg.path_logs = path_manager.PATH_LOGS
+
     if cfg.env_type == 'gymnasium':
         env_fn = make_gymnasium_env_from_cfg
     elif cfg.env_type == 'dmc':
@@ -22,6 +28,7 @@ def make_envs(cfg: EnvConfig) -> tuple[gym.vector.SyncVectorEnv, gym.vector.Sync
         def thunk():
             env = env_fn(cfg_i)
             env = RecordEpisodeStatistics(env)  # 优先在RewardScale之前记录
+            # DMC
             if cfg_i.max_episode_steps is not None:
                 env = TimeLimit(env, cfg_i.max_episode_steps)
             if cfg_i.action_repeat is not None and cfg_i.action_repeat > 1:
@@ -30,6 +37,9 @@ def make_envs(cfg: EnvConfig) -> tuple[gym.vector.SyncVectorEnv, gym.vector.Sync
                 env = RescaleAction(env, -1.0, 1.0)
             if cfg_i.reward_scale != 1.0:
                 env = TransformReward(env, lambda r: r * cfg_i.reward_scale)
+            # Atari
+            if cfg_i.atari_wrappers:
+                env = apply_atari_wrappers(env, cfg_i.max_and_skip)
             return env
         return thunk
 

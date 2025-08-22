@@ -1,24 +1,40 @@
 import gymnasium as gym
+import ale_py
+gym.register_envs(ale_py)
+
 from dataclasses import dataclass
+import typing
 from typing import Literal
 from katarl2.envs.common.env_cfg import EnvConfig
 from katarl2.common import path_manager
 from gymnasium.core import ObsType
 from typing import Any
 
-MUJOCO_PY_NAME = [
-    'Hopper-v4', 'Ant-v4', 'HalfCheetah-v4', 'HumanoidStandup-v4', 'Humanoid-v4',
-]
-
-ENV_NAME = [
-    *MUJOCO_PY_NAME
-]
-
 @dataclass
-class GymEnvConfig(EnvConfig):
+class GymAtariEnvConfig(EnvConfig):
+    atari_wrappers: bool = True
     env_type: Literal['gymnasium'] = 'gymnasium'
     env_name: Literal[
-        'Hopper-v4', 'Ant-v4', 'HalfCheetah-v4', 'HumanoidStandup-v4', 'Humanoid-v4'
+        'Alien-v5', 'Amidar-v5', 'Assault-v5', 'Asterix-v5', 'Asteroids-v5',
+        'Atlantis-v5', 'BankHeist-v5', 'BattleZone-v5', 'BeamRider-v5', 'Blinky-v5',
+        'Bowling-v5', 'Boxing-v5', 'Breakout-v5', 'Carnival-v5', 'Centipede-v5',
+        'ChopperCommand-v5', 'CrazyClimber-v5', 'DemonAttack-v5', 'DoubleDunk-v5',
+        'Enduro-v5', 'FishingDerby-v5', 'Freeway-v5', 'Frostbite-v5', 'Gopher-v5',
+        'Gravitar-v5', 'Hero-v5', 'IceHockey-v5', 'Jamesbond-v5', 'JourneyEscape-v5',
+        'Kangaroo-v5', 'Krull-v5', 'KungFuMaster-v5', 'MontezumaRevenge-v5',
+        'MsPacman-v5', 'NameThisGame-v5', 'Phoenix-v5', 'Pitfall-v5', 'Pong-v5',
+        'PrivateEye-v5', 'Qbert-v5', 'Riverraid-v5', 'RoadRunner-v5', 'Robotank-v5',
+        'Seaquest-v5', 'Skiing-v5', 'Solaris-v5', 'SpaceInvaders-v5', 'StarGunner-v5',
+        'Tennis-v5', 'TimePilot-v5', 'Tutankham-v5', 'UpNDown-v5', 'Venture-v5',
+        'VideoPinball-v5', 'WizardOfWor-v5', 'YarsRevenge-v5', 'Zaxxon-v5'
+    ] = 'Breakout-v5'
+
+@dataclass
+class GymMujocoEnvConfig(EnvConfig):
+    env_type: Literal['gymnasium'] = 'gymnasium'
+    env_name: Literal[
+        'Ant-v4', 'HalfCheetah-v4', 'Hopper-v4', 'HumanoidStandup-v4', 'Humanoid-v4',
+        'InvertedPendulum-v4', 'Pusher-v5', 'Walker2d-v4'
     ] = 'Hopper-v4'
 
 class SeedWrapper(gym.Wrapper):
@@ -39,11 +55,11 @@ class SeedWrapper(gym.Wrapper):
         return obs, info
 
 def make_gymnasium_env_from_cfg(cfg: EnvConfig):
-    if cfg.env_name not in ENV_NAME:
-        raise ValueError(f"Unsupported environment name: {cfg.env_name}. Supported names: {ENV_NAME}")
+    if cfg.env_name in typing.get_args(GymAtariEnvConfig.__annotations__['env_name']):
+        cfg.env_name = 'ALE/' + cfg.env_name
+
     if cfg.capture_video:
-        PATH_VIDEOS = path_manager.PATH_LOGS / 'videos'
-        # PATH_VIDEOS.mkdir(parents=True, exist_ok=True)
+        PATH_VIDEOS = cfg.path_logs / 'videos'
 
     if cfg.capture_video:
         env = gym.make(cfg.env_name, render_mode='rgb_array')

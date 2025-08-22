@@ -1,10 +1,10 @@
 """
 BasicSAC (from cleanrl)
-启动脚本请用: bash ./benchmarks/sac_run_experiments.py
+启动脚本: bash ./benchmarks/sac_run_experiments.py
 查看可用参数: python ./demos/sac.py --help
-单独启动训练:
-python ./demos/sac.py --env.env-type gymnasium --env.env-name Hopper-v4 --agent.num-env-steps 100000 --agent.verbose 2
-python ./demos/sac.py --env.env-type dmc --env.env-name walker-walk --agent.num-env-steps 100000 --agent.verbose 2
+单独启动训练 (子命令选择 {env:gym, env:dmc}):
+python ./demos/sac.py env:gym --env.env-name Hopper-v4 --agent.num-env-steps 100000 --agent.verbose 2 --debug
+python ./demos/sac.py env:dmc --env.env-name walker-walk --agent.num-env-steps 100000 --agent.verbose 2 --debug
 """
 import sys
 from pathlib import Path
@@ -16,9 +16,10 @@ os.environ["OMP_NUM_THREADS"] = "2"
 os.environ["MKL_NUM_THREADS"] = "2"
 
 import tyro
+from typing import Union, Annotated
 from dataclasses import dataclass
 from katarl2.agents import SAC, SACConfig
-from katarl2.envs.common.env_cfg import EnvConfig
+from katarl2.envs import DMCEnvConfig, GymMujocoEnvConfig
 from katarl2.common.logger import LogConfig, get_tensorboard_writer
 from katarl2.envs.env_maker import make_envs
 from katarl2.common import path_manager
@@ -29,13 +30,16 @@ from pprint import pprint
 @dataclass
 class Args:
     agent: SACConfig
-    env: EnvConfig
+    env: Union[
+        Annotated[DMCEnvConfig, tyro.conf.subcommand("dmc")],
+        Annotated[GymMujocoEnvConfig, tyro.conf.subcommand("gym")],
+    ]
     logger: LogConfig
     debug: bool = False
 
 if __name__ == '__main__':
     """ Preprocess """
-    args: Args = tyro.cli(Args)
+    args: Args = tyro.cli(Args, config=(tyro.conf.ConsolidateSubcommandArgs,))
     path_manager.build_path_logs(args.agent, args.env, args.debug)
     envs, eval_envs = make_envs(args.env)
     logger = get_tensorboard_writer(args.logger, args)

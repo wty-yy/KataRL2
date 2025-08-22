@@ -32,3 +32,11 @@ P.S.
 P.S.
 1. 由于游戏貌似可能能无限玩下去, Breakout和Phoenix发现, 因此限制最大步数为50000步
 2. 验证时, 如果固定episode次数验证且开多环境并行验证, 则总episode次数应该是eval_episode*num_eval_envs (如果总episode次数为eval_episdoe, 则环境并行方差很大)
+
+## v0.3 (20250822 - )
+1. 修改Atari相关算法的action_repeat, 记录的步数为环境真实步进, 由于Atari默认叠4帧, 因此num_env_steps也从原来的1e7 -> 4e7
+2. 修复DMC默认渲染导致速度较慢的问题
+3. tyro中对大环境(gym,dmc,envpool)加入sub_command命令, 只有输入python *.py env:gym --help才会显示全部的配置参数, 因为每个环境的参数各不相同, 所以需要用子命令进一步划分明确, 也让环境配置更分离, 更容易配置
+
+TODO:
+- [ ] 加入DreamerV3

@@ -12,6 +12,7 @@ dependencies:
       - gymnasium==1.2.0
       - gymnasium[mujoco]
       - gymnasium[other]
+      - gymnasium[atari]
       - dm-control==1.0.31
       - shimmy==2.0.0
       - envpool==0.8.4
