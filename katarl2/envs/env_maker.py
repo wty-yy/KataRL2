@@ -27,17 +27,15 @@ def make_envs(cfg: EnvConfig) -> tuple[gym.vector.SyncVectorEnv, gym.vector.Sync
     def env_wrapper_fn(cfg_i: EnvConfig):
         def thunk():
             env = env_fn(cfg_i)
-            env = RecordEpisodeStatistics(env)  # 优先在RewardScale之前记录
-            # DMC
             if cfg_i.max_episode_steps is not None:
                 env = TimeLimit(env, cfg_i.max_episode_steps)
             if cfg_i.action_repeat is not None and cfg_i.action_repeat > 1:
                 env = RepeatAction(env, cfg_i.action_repeat)
             if cfg_i.rescale_action is not None and cfg_i.rescale_action:
                 env = RescaleAction(env, -1.0, 1.0)
+            env = RecordEpisodeStatistics(env)  # 优先在RewardScale之前记录
             if cfg_i.reward_scale != 1.0:
                 env = TransformReward(env, lambda r: r * cfg_i.reward_scale)
-            # Atari
             if cfg_i.atari_wrappers:
                 env = apply_atari_wrappers(env, cfg_i.max_and_skip)
             return env

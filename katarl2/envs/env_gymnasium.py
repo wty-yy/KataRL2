@@ -12,6 +12,7 @@ from typing import Any
 
 @dataclass
 class GymAtariEnvConfig(EnvConfig):
+    max_episode_steps: int = 108000
     atari_wrappers: bool = True
     env_type: Literal['gymnasium'] = 'gymnasium'
     env_name: Literal[
@@ -31,6 +32,7 @@ class GymAtariEnvConfig(EnvConfig):
 
 @dataclass
 class GymMujocoEnvConfig(EnvConfig):
+    max_episode_steps: int = 1000
     env_type: Literal['gymnasium'] = 'gymnasium'
     env_name: Literal[
         'Ant-v4', 'HalfCheetah-v4', 'Hopper-v4', 'HumanoidStandup-v4', 'Humanoid-v4',
@@ -55,17 +57,23 @@ class SeedWrapper(gym.Wrapper):
         return obs, info
 
 def make_gymnasium_env_from_cfg(cfg: EnvConfig):
+    gym_make_kwargs = {}
     if cfg.env_name in typing.get_args(GymAtariEnvConfig.__annotations__['env_name']):
-        cfg.env_name = 'ALE/' + cfg.env_name
+        cfg.env_name = 'ALE/' + cfg.env_name  # ALE
+        # Reference https://ale.farama.org/environments/
+        gym_make_kwargs.update({
+            'frameskip': 1,                   # NoFrameSkip
+            'repeat_action_probability': 0.,  # 1/4粘性动作
+        })
 
     if cfg.capture_video:
         PATH_VIDEOS = cfg.path_logs / 'videos'
 
     if cfg.capture_video:
-        env = gym.make(cfg.env_name, render_mode='rgb_array')
-        env = gym.wrappers.RecordVideo(env, str(PATH_VIDEOS))
+        env = gym.make(cfg.env_name, render_mode='rgb_array', **gym_make_kwargs)
+        env = gym.wrappers.RecordVideo(env, str(PATH_VIDEOS), episode_trigger=lambda x: True, video_length=30*10*60, fps=30)
     else:
-        env = gym.make(cfg.env_name)
+        env = gym.make(cfg.env_name, **gym_make_kwargs)
     env = SeedWrapper(env, cfg.seed)
     env.action_space.seed(cfg.seed)
     return env

@@ -47,44 +47,36 @@ class BaseAgent:
         """ 训练, 和envs环境交互步进次数为cfg.num_env_steps """
         raise NotImplementedError("The learn method must be implemented by the agent subclass.")
     
-    def eval(self, env_step: Optional[int] = None):
-        """ 评估, 和eval_envs环境交互步进回合次数为cfg.num_eval_episodes * num_eval_envs, 在train中记录需传入当前env_step
+    def eval(self, env_step: Optional[int] = None, verbose: bool = False):
+        """ 评估, 和eval_envs环境交互步进回合次数为cfg.num_eval_episodes, 在train中记录需传入当前env_step
         仅需实现对应智能体的predict方法, 环境会自动包装RecordEpisodeStatistics记录总奖励, 从而实现以下评估代码
         """
-        max_total_interaction_steps = 50000  # 有些Atari环境可能无限玩下去, 因此限制最大交互次数
+        steps = 0
         episodic_returns = []
         episodic_lens = []
-        num_eval_envs = self.eval_envs.num_envs
-        total_eval_episodes = self.cfg.num_eval_episodes * num_eval_envs
 
         obs, _ = self.eval_envs.reset()
-        while len(episodic_returns) < total_eval_episodes and max_total_interaction_steps > 0:
+        while len(episodic_returns) < self.cfg.num_eval_episodes:
+            steps += 1
+            print(steps)
             action = self.predict(obs)
             obs, rewards, terminations, truncations, infos = self.eval_envs.step(action)
-            max_total_interaction_steps -= 1
-            
+
             if "final_info" in infos and 'episode' in infos['final_info']:
                 final_info = infos['final_info']
                 mask = final_info['_episode']
                 episodic_returns.extend(final_info['episode']['r'][mask].tolist())
                 episodic_lens.extend(final_info['episode']['l'][mask].tolist())
             
-        # 超出步数触发截断 envpool 的 Atari 中可能发生
-        if len(episodic_returns) < total_eval_episodes:
-            if 'episodic_info' in infos:
-                mask = np.ones_like(infos['episodic_info']['r'], dtype=bool)
-                if 'final_info' in infos:
-                    mask = 1 - infos['final_info']['_episode']
-                n = min(total_eval_episodes - len(episodic_returns), np.sum(mask))
-                episodic_returns.extend(np.sort(infos['episodic_info']['r'][mask])[-n:].tolist())
-                episodic_lens.extend(np.sort(infos['episodic_info']['l'][mask])[-n:].tolist())
-                print(f"[WARNING] Evaluation interaction step > 50000 stop eval, final {infos['episodic_info']['r']=}, {infos['episodic_info']['l']=}")
-            else:
-                print(f"[WARNING] Evaluation interaction step > 50000 stop eval, but no 'episodic_info' in infos, {infos=}")
-
         if self.logger is not None and env_step is not None:
             self.logger.add_scalar("charts/episodic_return", np.mean(episodic_returns), env_step)
             self.logger.add_scalar("charts/episodic_length", np.mean(episodic_lens), env_step)
+        
+        if verbose:
+            print(f"[INFO] Eval over {len(episodic_returns)} episodes: "
+                  f"mean_return {np.mean(episodic_returns):.2f} +/- {np.std(episodic_returns):.2f}, "
+                  f"mean_length {np.mean(episodic_lens):.2f} +/- {np.std(episodic_lens):.2f}, "
+                  f"all_returns: {np.round(episodic_returns, 2)}")
 
     def save(self, path: str | Path = 'default'):
         """ 保存, 使用torch.save保存所有转为cpu的模型权重和其他重要参数 """

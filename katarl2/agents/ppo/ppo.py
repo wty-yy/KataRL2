@@ -272,6 +272,7 @@ class PPO(BaseAgent):
     @classmethod
     def load(cls, path: str | Path, device: str | torch.device):
         data = torch.load(str(path), map_location=device, weights_only=False)
+        data['config'].device = device
         self = cls(cfg=data['config'])
         self.agent.load_state_dict(data['agent'])
         print(f"[INFO] Load PPO model from {path} successfully.")

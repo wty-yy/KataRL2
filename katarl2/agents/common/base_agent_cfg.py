@@ -39,8 +39,8 @@ class BaseAgentConfig:
     num_interaction_steps: Any = None
     # Evaluation in learn() function
     eval_per_interaction_step: int = 25000
-    # Number of evaluation episodes
-    num_eval_episodes: int = 10
+    # Total number of evaluation episodes
+    num_eval_episodes: int = 32
 
     """ hyper-parameters (each algorithm has diff params, here are some examples) """
     # the replay memory buffer size

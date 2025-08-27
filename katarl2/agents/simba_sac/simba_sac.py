@@ -250,27 +250,7 @@ class SimbaSAC(BaseAgent):
                         last_verbose_time = time.time()
                         time_left = (cfg.num_interaction_steps - self.interaction_step) / SPS
                         print(f"[INFO] {self.interaction_step}/{cfg.num_interaction_steps} steps, SPS: {SPS}, [{cvt_string_time(time_used)}<{cvt_string_time(time_left)}]")
-    
-    def eval(self):
-        episodic_returns = []
-        episodic_lens = []
-
-        obs, _ = self.eval_envs.reset()
-        while len(episodic_returns) < self.cfg.num_eval_episodes:
-            action = self.predict(obs)
-            obs, rewards, terminations, truncations, infos = self.eval_envs.step(action)
-            
-            if "final_info" in infos:
-                final_info = infos['final_info']
-                mask = final_info['_episode']
-                episodic_returns.extend(final_info['episode']['r'][mask].tolist())
-                episodic_lens.extend(final_info['episode']['l'][mask].tolist())
-
-        if self.logger is not None:  # 即使有RewardScale但是由于RecordEpisodeStatistics wrapper在之前, 所以记录的是正确的return
-            env_step = self.interaction_step * self.env_cfg.action_repeat * self.env_cfg.num_envs
-            self.logger.add_scalar("charts/episodic_return", np.mean(episodic_returns), env_step)
-            self.logger.add_scalar("charts/episodic_length", np.mean(episodic_lens), env_step)
-
+ 
     def save(self, path='default') -> Path:
         to_cpu = lambda data: {k: v.to('cpu') for k, v in data.items()}
         data = {

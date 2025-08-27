@@ -3,7 +3,7 @@ PPO (from cleanrl)
 启动脚本: bash ./benchmarks/ppo_run_experiments.py
 查看可用参数: python ./demos/ppo.py --help
 单独启动训练 (子命令选择 {env:envpool, env:gym}):
-python ./demos/ppo.py env:envpool --env.env-name Breakout-v5 --agent.num-env-steps 100000 --agent.verbose 2 --debug
+python ./demos/ppo.py env:envpool --env.env-name Breakout-v5 --agent.num-env-steps 10000 --agent.verbose 2 --debug
 python ./demos/ppo.py env:gym --env.env-name Breakout-v5 --agent.num-env-steps 10000 --agent.verbose 2 --agent.device cuda:1 --debug
 """
 import sys
@@ -28,12 +28,12 @@ from pprint import pprint
 @dataclass
 class PPOEnvpoolAtariEnvConfig(EnvpoolAtariConfig):
     num_envs: int = 8
-    num_eval_envs: int = 4
+    num_eval_envs: int = 32
 
 @dataclass
 class PPOGymAtariEnvConfig(GymAtariEnvConfig):
     num_envs: int = 8
-    num_eval_envs: int = 4
+    num_eval_envs: int = 32
 
 @dataclass
 class Args:
@@ -62,11 +62,13 @@ if __name__ == '__main__':
     envs.close()
     eval_envs.close()
     print("[INFO] Finish Training.")
-    exit()
 
     """ Eval """
     print("[INFO] Start Evaluation.")
     agent = PPO.load(path_ckpt, args.agent.device)
+    if args.env.env_type == 'envpool':
+        args.env.env_type = 'gymnasium'  # Render in gymnasium suite
+        args.env.atari_wrappers = True  # Render with atari wrappers
     args.env.num_eval_envs = 1
     args.env.capture_video = True
     agent.cfg.num_eval_episodes = 1
