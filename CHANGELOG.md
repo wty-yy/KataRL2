@@ -39,7 +39,12 @@ P.S.
 3. tyro中对大环境(gym,dmc,envpool)加入sub_command命令, 只有输入python *.py env:gym --help才会显示全部的配置参数, 因为每个环境的参数各不相同, 所以需要用子命令进一步划分明确, 也让环境配置更分离, 更容易配置
 4. 修复Gymnaisum的Atari中默认v5有FrameSkip导致训练极差的问题, 现在统一Atari的环境标准为FrameSkip=1, sticky=0.25
 5. 设置RecordVideo的最大长度为10min, 如果存储episode整个需要60min过慢, 而且后面可能都是重复动作
+6. 加入连续控制版的PPO和SimbaPPO, 在MujocoPy和DMControl上测试
+
+P.S.
+1. cleanrl的连续控制版本的PPO默认使用了, obs和reward的RMS来动态归一化, 这导致了train和eval环境上的RMS参数不一致, 因此不再使用gym的默认包装器, 而使用我们自己的统一的RMS包装器, 对向量化环境进行RMS (环境级别的)
+2. NormalizeReward有一个小细节, reward的RMS计算指标是return的RMS, 并且归一化并不减去均值, 而只是除以标准差, 参考: [Gamma in VecNormalize for rms updates.](https://github.com/openai/baselines/issues/538)
+3. 虽然lambda函数无法用pkl打包, 但可以用functools.partial或者返回包装的thunk函数替代lambda函数
 
 TODO:
 - [ ] 加入DreamerV3
-- [ ] 加入连续控制版的PPO, 在MujocoPy和DMControl上测试

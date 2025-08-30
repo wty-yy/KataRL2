@@ -1,8 +1,10 @@
+import time
 import torch
 import numpy as np
 import gymnasium as gym
 from pathlib import Path
 from typing import Optional
+from katarl2.common.utils import cvt_string_time
 from katarl2.envs.common.env_cfg import EnvConfig
 from torch.utils.tensorboard import SummaryWriter
 from katarl2.agents.common.base_agent_cfg import BaseAgentConfig
@@ -47,18 +49,23 @@ class BaseAgent:
         """ 训练, 和envs环境交互步进次数为cfg.num_env_steps """
         raise NotImplementedError("The learn method must be implemented by the agent subclass.")
     
-    def eval(self, env_step: Optional[int] = None, verbose: bool = False):
+    def eval(self, env_step: Optional[int] = None, verbose: bool = False) -> float:
         """ 评估, 和eval_envs环境交互步进回合次数为cfg.num_eval_episodes, 在train中记录需传入当前env_step
         仅需实现对应智能体的predict方法, 环境会自动包装RecordEpisodeStatistics记录总奖励, 从而实现以下评估代码
+        Args:
+            env_step: Optional[int], 当前训练的环境交互步进总数, 用于记录日志
+            verbose: bool, 是否打印详细评估结果
+        Returns:
+            eval_time: float, 评估所用时间, 单位秒
         """
-        steps = 0
+        print("[INFO] Start Evaluation...", end='', flush=True)
+        t1 = time.time()
+
         episodic_returns = []
         episodic_lens = []
 
         obs, _ = self.eval_envs.reset()
         while len(episodic_returns) < self.cfg.num_eval_episodes:
-            steps += 1
-            print(steps)
             action = self.predict(obs)
             obs, rewards, terminations, truncations, infos = self.eval_envs.step(action)
 
@@ -77,6 +84,12 @@ class BaseAgent:
                   f"mean_return {np.mean(episodic_returns):.2f} +/- {np.std(episodic_returns):.2f}, "
                   f"mean_length {np.mean(episodic_lens):.2f} +/- {np.std(episodic_lens):.2f}, "
                   f"all_returns: {np.round(episodic_returns, 2)}")
+
+        eval_time = time.time() - t1
+        print(f"Eval time used: {cvt_string_time(eval_time)}, "
+              f"return: {np.mean(episodic_returns):.2f} +/- {np.std(episodic_returns):.2f}, "
+              f"length: {np.mean(episodic_lens):.2f} +/- {np.std(episodic_lens):.2f}")
+        return eval_time
 
     def save(self, path: str | Path = 'default'):
         """ 保存, 使用torch.save保存所有转为cpu的模型权重和其他重要参数 """

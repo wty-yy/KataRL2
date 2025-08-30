@@ -2,7 +2,7 @@ import torch
 from torch import nn
 import gymnasium as gym
 from torch.distributions.categorical import Categorical
-from katarl2.agents.ppo.ppo_cfg import PPOConfig
+from katarl2.agents.ppo.ppo_cfg import PPODiscreteConfig
 import numpy as np
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):

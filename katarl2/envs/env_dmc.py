@@ -12,6 +12,7 @@ from katarl2.envs.common.env_cfg import EnvConfig
 
 @dataclass
 class DMCEnvConfig(EnvConfig):
+    flatten_observation: bool = True
     max_episode_steps: int = 1000
     env_type: Literal['dmc'] = 'dmc'
     env_name: Literal[  # Only continuous control tasks
@@ -61,7 +62,6 @@ class DMCEnvConfig(EnvConfig):
 def make_dmc_env(
     env_name: str,
     seed: int,
-    flatten: bool = True,
     render: bool = False
 ) -> gym.Env:
     domain_name, task_name = env_name.split("-")
@@ -71,8 +71,6 @@ def make_dmc_env(
         task_kwargs={"random": seed},
     )
     env = DmControltoGymnasium(env, render_mode="rgb_array" if render else None)
-    if flatten and isinstance(env.observation_space, spaces.Dict):
-        env = FlattenObservation(env)
 
     return env
 

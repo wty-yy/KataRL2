@@ -59,7 +59,7 @@ def get_full_policy_name(cfg: BaseAgentConfig) -> str:
         if cfg.use_cdq:
             name += '_cdq'
     if cfg.algo_name.lower() == 'ppo' and cfg.policy_name.lower() == 'simba':
-        if cfg.origin_agent:
+        if hasattr(cfg, 'origin_agent') and cfg.origin_agent:
             name += '_OrgNet'
     if cfg.algo_name.lower() == 'ppo' and cfg.policy_name.lower() == 'basic':
         if cfg.layer_norm_network:

@@ -2,7 +2,7 @@ import torch
 from torch import nn
 import gymnasium as gym
 from torch.distributions.categorical import Categorical
-from katarl2.agents.simba_ppo.model.residual_encoder import ResidualEncoder
+from katarl2.agents.common.networks.residual_encoder import ResidualEncoder
 import numpy as np
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):

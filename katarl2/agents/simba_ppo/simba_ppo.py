@@ -21,8 +21,8 @@ from tqdm import tqdm
 from pathlib import Path
 from katarl2.agents.common.utils import set_seed_everywhere, enable_deterministic_run
 from katarl2.agents.common.base_agent import BaseAgent
-from katarl2.agents.simba_ppo.model.cnn_discrete import Agent
-from katarl2.agents.simba_ppo.model.cnn_discrete_origin import Agent as OriginAgent
+from katarl2.agents.simba_ppo.models.cnn_discrete import Agent
+from katarl2.agents.simba_ppo.models.cnn_discrete_origin import Agent as OriginAgent
 from katarl2.common import path_manager
 from katarl2.common.utils import cvt_string_time
 from katarl2.agents.common.running_mean_std import RunningMeanStd
