@@ -13,7 +13,7 @@ from katarl2.envs.common.env_cfg import EnvConfig
 @dataclass
 class DMCEnvConfig(EnvConfig):
     flatten_observation: bool = True
-    max_episode_steps: int = 1000
+    max_episode_env_steps: int = 1000
     env_type: Literal['dmc'] = 'dmc'
     env_name: Literal[  # Only continuous control tasks
         # 20 tasks DMC_EASY_MEDIUM

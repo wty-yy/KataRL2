@@ -69,4 +69,5 @@ if __name__ == "__main__":
             # os.system(" ".join(full_cmd))
             print(f"[Start PID={pid}]: '{' '.join(full_cmd)}'")
             total += 1
+            time.sleep(1)  # 避免同时启动多个任务时系统过载
     print(f"Successfully start {total} tasks.")

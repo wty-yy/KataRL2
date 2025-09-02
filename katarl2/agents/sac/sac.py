@@ -222,7 +222,7 @@ class SAC(BaseAgent):
             }
         }
         if path == 'default':
-            path_ckpt = self.PATH_CKPTS / f"sac-{self.train_steps}.pkl"
+            path_ckpt = self.PATH_CKPTS / f"{self.cfg.full_name}-{self.train_steps}.pkl"
         else:
             path_ckpt = path
         torch.save(data, str(path_ckpt))

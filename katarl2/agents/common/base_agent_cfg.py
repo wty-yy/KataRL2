@@ -1,7 +1,7 @@
 """ 基础的Agent配置类, 所有Agent配置文件都至少需要这些参数 """
 from typing import Literal
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 
 @dataclass
 class BaseAgentConfig:
@@ -21,6 +21,8 @@ class BaseAgentConfig:
     verbose: int = 0
     # Pytorch model device, cpu, cuda, cuda:0, cuda:1, ...
     device: str = 'cuda'
+    # Full name (used for logging and saving, don't setup in CLI)
+    full_name: Optional[str] = None
     
     """ Environment (setup after envs created) """
     # Don't setup these params in CLI
@@ -35,7 +37,7 @@ class BaseAgentConfig:
     """ Training / Evaluating """
     # Total environment steps
     num_env_steps: int = int(1e6)
-    # Total agent interaction steps (Don't setup this param in CLI)
+    # Total agent interaction steps (Don't setup in CLI)
     num_interaction_steps: Any = None
     # Evaluation in learn() function
     eval_per_interaction_step: int = 25000
@@ -55,12 +57,6 @@ class BaseAgentConfig:
 
 def get_full_policy_name(cfg: BaseAgentConfig) -> str:
     name = f"{cfg.policy_name.lower()}_{cfg.action_type.lower()}_{cfg.network_name.lower()}"
-    if cfg.algo_name.lower() == 'sac' and cfg.policy_name.lower() == 'simba':
-        if cfg.use_cdq:
-            name += '_cdq'
-    if cfg.algo_name.lower() == 'ppo' and cfg.policy_name.lower() == 'simba':
-        if hasattr(cfg, 'origin_agent') and cfg.origin_agent:
-            name += '_OrgNet'
     if cfg.algo_name.lower() == 'ppo' and cfg.policy_name.lower() == 'basic':
         if cfg.layer_norm_network:
             name += '_LN'

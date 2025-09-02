@@ -19,8 +19,8 @@ class EnvConfig:
     # Random seed for environment
     seed: int = 42
     """ Wrappers Parameters (Update by Algo) """
-    # Max episode steps (optional)
-    max_episode_steps: Optional[int] = None
+    # Max episode environment steps (optional)
+    max_episode_env_steps: Optional[int] = None
     """ Observation related """
     # Flatten observation (deal with cm_control's Dict observation space)
     flatten_observation: bool = False

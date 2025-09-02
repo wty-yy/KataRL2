@@ -30,10 +30,10 @@ ENV_NAME = [
 ]
 
 # 并行版Wrapper, clearnl/ppo_atari_envpool.py (并修改为Gymnasium>=1.0版本)
-class RecordEpisodeStatisticsAndTimeLimit:
-    def __init__(self, envs, time_limit: int):
+class RecordEpisodeStatistics:
+    def __init__(self, envs, frame_skip: int):
         self.envs = envs
-        self.time_limit = time_limit
+        self.frame_skip = frame_skip
         self.num_envs = len(envs.all_env_ids)
         self.episode_returns = None
         self.episode_lengths = None
@@ -62,10 +62,9 @@ class RecordEpisodeStatisticsAndTimeLimit:
     def step(self, action):
         observations, rewards, terminations, truncations, infos = self.envs.step(action)
         self.episode_returns += infos["reward"]
-        self.episode_lengths += 1
-        # 超时
-        infos["terminated"] |= self.episode_lengths > self.time_limit
-        truncations |= self.episode_lengths > self.time_limit
+        self.episode_lengths += self.frame_skip
+        # 超时 (truncations只有到达最大步数截断时为True)
+        infos["terminated"] |= truncations
 
         self.returned_episode_returns[:] = self.episode_returns
         self.returned_episode_lengths[:] = self.episode_lengths
@@ -96,7 +95,8 @@ class RecordEpisodeStatisticsAndTimeLimit:
 
 @dataclass
 class EnvpoolAtariConfig(EnvConfig):
-    max_episode_steps: int = 108000
+    max_episode_env_steps: int = 108000
+    max_and_skip: int = 4
     env_type: Literal['envpool'] = 'envpool'
     env_name: Literal[
         'Alien-v5', 'Amidar-v5', 'Assault-v5', 'Asterix-v5', 'Asteroids-v5',
@@ -126,7 +126,7 @@ def make_envpool_envs_from_cfg(cfg: EnvConfig, train: bool):
             env_type='gymnasium',
             num_envs=num_envs,
             seed=cfg.seed,
-            max_episode_steps=cfg.max_episode_steps,
+            max_episode_steps=cfg.max_episode_env_steps//4,
             repeat_action_probability=0.25,
 
             # Default wrappers
@@ -142,6 +142,5 @@ def make_envpool_envs_from_cfg(cfg: EnvConfig, train: bool):
         )
     else:
         raise ValueError(f"Unsupported environment name: {cfg.env_name}. Supported names: {ATARI_NAME}")
-    # 这里的time_limit是经过frame_skip后的步数
-    envs = RecordEpisodeStatisticsAndTimeLimit(envs, time_limit=cfg.max_episode_steps // 4)
+    envs = RecordEpisodeStatistics(envs, frame_skip=cfg.max_and_skip)
     return envs

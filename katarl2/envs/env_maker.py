@@ -37,8 +37,8 @@ def make_envs(cfg: EnvConfig) -> tuple[gym.vector.SyncVectorEnv, gym.vector.Sync
     def env_wrapper_fn(cfg_i: EnvConfig, train: bool):
         def thunk():
             env = env_fn(cfg_i)
-            if cfg_i.max_episode_steps is not None:
-                env = TimeLimit(env, cfg_i.max_episode_steps)
+            if cfg_i.max_episode_env_steps is not None:
+                env = TimeLimit(env, cfg_i.max_episode_env_steps)
 
             env = RecordEpisodeStatistics(env)  # TimeLimit之后, RewardScale之前记录
 
@@ -56,6 +56,8 @@ def make_envs(cfg: EnvConfig) -> tuple[gym.vector.SyncVectorEnv, gym.vector.Sync
             if cfg_i.clip_action:
                 env = ClipAction(env)
             if cfg_i.action_repeat is not None and cfg_i.action_repeat > 1:
+                if cfg_i.atari_wrappers:
+                    print(f"[WARNING] Do you sure open `atari_wrappers` both `action_repeat={cfg_i.action_repeat}`, which has `max_and_skip={cfg_i.max_and_skip}`?")
                 env = RepeatAction(env, cfg_i.action_repeat)
             if cfg_i.rescale_action is not None and cfg_i.rescale_action:
                 env = RescaleAction(env, -1.0, 1.0)
@@ -71,6 +73,8 @@ def make_envs(cfg: EnvConfig) -> tuple[gym.vector.SyncVectorEnv, gym.vector.Sync
                 env = TransformReward(env, lambda r: r * cfg_i.reward_scale)
             """ Others """
             if cfg_i.atari_wrappers:
+                if cfg_i.max_and_skip == 1:
+                    print(f"[WARNING] Do you sure open `atari_wrappers` but `max_and_skip=1`?")
                 env = apply_atari_wrappers(env, cfg_i.max_and_skip)
             return env
         return thunk

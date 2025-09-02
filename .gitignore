@@ -11,3 +11,12 @@ logs
 wandb
 swanlog
 nohup.out
+
+# Data
+*.tar.xz
+*.zip
+*.tar.gz
+*.tgz
+*.npy
+*.pt
+*.pkl

@@ -306,7 +306,7 @@ class PPO(BaseAgent):
             self.PATH_CKPTS = PATH_LOGS / "ckpts"
             self.PATH_CKPTS.mkdir(exist_ok=True, parents=True)
 
-            path_ckpt = self.PATH_CKPTS / f"sac-{self.train_step}.pkl"
+            path_ckpt = self.PATH_CKPTS / f"{self.cfg.full_name}-{self.train_step}.pkl"
         else:
             path_ckpt = path
         torch.save(data, str(path_ckpt))

@@ -19,17 +19,17 @@ ppo_type: Literal['basic', 'simba'] = 'basic'
 tasks = [
     # (action_type, env_subcommand, env_name, cuda_list, seed_list)
     # # Discrete Envpool (no render)
-    ("agent:disc", "env:envpool-atari", 'Assault-v5',       [0, 0, 0], [0, 1, 2]),
-    ("agent:disc", "env:envpool-atari", 'Asterix-v5',       [0, 0, 0], [0, 1, 2]),
-    ("agent:disc", "env:envpool-atari", 'Boxing-v5',        [1, 1, 1], [0, 1, 2]),
-    ("agent:disc", "env:envpool-atari", 'Breakout-v5',      [1, 1, 1], [0, 1, 2]),
+    ("agent:disc", "env:envpool-atari", 'Assault-v5',       [7, 7, 7], [0, 1, 2]),
+    ("agent:disc", "env:envpool-atari", 'Asterix-v5',       [7, 7, 7], [0, 1, 2]),
+    ("agent:disc", "env:envpool-atari", 'Boxing-v5',        [0, 0, 1], [0, 1, 2]),
+    ("agent:disc", "env:envpool-atari", 'Breakout-v5',      [1, 3, 4], [0, 1, 2]),
     ("agent:disc", "env:envpool-atari", 'Phoenix-v5',       [2, 2, 2], [0, 1, 2]),
     ("agent:disc", "env:envpool-atari", 'Pong-v5',          [2, 2, 2], [0, 1, 2]),
-    ("agent:disc", "env:envpool-atari", 'Qbert-v5',         [3, 3, 3], [0, 1, 2]),
-    ("agent:disc", "env:envpool-atari", 'Seaquest-v5',      [3, 3, 3], [0, 1, 2]),
-    ("agent:disc", "env:envpool-atari", 'UpNDown-v5',       [4, 4, 4], [0, 1, 2]),
-    ("agent:disc", "env:envpool-atari", 'WizardOfWor-v5',   [4, 4, 4], [0, 1, 2]),
-    # # Discrete Gymnasium (can render)
+    ("agent:disc", "env:envpool-atari", 'Qbert-v5',         [5, 5, 5], [0, 1, 2]),
+    ("agent:disc", "env:envpool-atari", 'Seaquest-v5',      [5, 5, 5], [0, 1, 2]),
+    ("agent:disc", "env:envpool-atari", 'UpNDown-v5',       [6, 6, 6], [0, 1, 2]),
+    ("agent:disc", "env:envpool-atari", 'WizardOfWor-v5',   [6, 6, 6], [0, 1, 2]),
+    # Discrete Gymnasium (can render)
     ("agent:disc", "env:gym-atari", 'Assault-v5',           [7, 7, 7], [0, 1, 2]),
     ("agent:disc", "env:gym-atari", 'Asterix-v5',           [7, 7, 7], [0, 1, 2]),
     ("agent:disc", "env:gym-atari", 'Boxing-v5',            [7, 7, 7], [0, 1, 2]),
@@ -111,4 +111,5 @@ if __name__ == "__main__":
             # os.system(" ".join(full_cmd))
             print(f"[Start PID={pid}]: '{' '.join(full_cmd)}'")
             total += 1
+            time.sleep(1)  # 避免同时启动多个任务时系统过载
     print(f"Successfully start {total} tasks.")

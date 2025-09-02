@@ -28,6 +28,7 @@ class PathManager:
         if self._PATH_LOGS is None:
             algo_name = agent_cfg.algo_name.lower()
             full_policy_name = get_full_policy_name(agent_cfg)
+            agent_cfg.full_name = f"{algo_name}_{full_policy_name}"
             env_name = get_env_name(env_cfg)
             seeds = [agent_cfg.seed, env_cfg.seed]
             timestamp = time.strftime("%Y%m%d-%H%M%S")

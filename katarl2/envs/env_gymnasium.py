@@ -12,7 +12,7 @@ from typing import Any
 
 @dataclass
 class GymAtariEnvConfig(EnvConfig):
-    max_episode_steps: int = 108000
+    max_episode_env_steps: int = 108000
     max_and_skip: int = 4
     atari_wrappers: bool = True
     env_type: Literal['gymnasium'] = 'gymnasium'
@@ -33,7 +33,7 @@ class GymAtariEnvConfig(EnvConfig):
 
 @dataclass
 class GymMujocoEnvConfig(EnvConfig):
-    max_episode_steps: int = 1000
+    max_episode_env_steps: int = 1000
     env_type: Literal['gymnasium'] = 'gymnasium'
     env_name: Literal[
         'Ant-v4',

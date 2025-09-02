@@ -3,9 +3,9 @@ import torch
 import random
 import numpy as np
 
-def calc_gamma(max_episode_steps, action_repeat):
+def calc_gamma(max_episode_env_steps, action_repeat):
     # gamma value is set with a heuristic from TD-MPCv2
-    eff_episode_len = max_episode_steps / action_repeat
+    eff_episode_len = max_episode_env_steps / action_repeat
     return max(min((eff_episode_len/5-1)/(eff_episode_len/5), 0.995), 0.95)
 
 def set_seed_everywhere(seed):

@@ -110,7 +110,7 @@ class SimbaSAC(BaseAgent):
 
         if cfg.gamma == 'auto':
             # gamma value is set with a heuristic from TD-MPCv2
-            cfg.gamma = calc_gamma(self.env_cfg.max_episode_steps, self.env_cfg.action_repeat)
+            cfg.gamma = calc_gamma(self.env_cfg.max_episode_env_steps, self.env_cfg.action_repeat)
 
         # start the game
         start_time = time.time()
@@ -264,7 +264,7 @@ class SimbaSAC(BaseAgent):
         if self.cfg.use_cdq:
             data['model']['qf2'] = to_cpu(self.qf2.state_dict())
         if path == 'default':
-            path_ckpt = self.PATH_CKPTS / f"sac-{self.train_steps}.pkl"
+            path_ckpt = self.PATH_CKPTS / f"{self.cfg.full_name}-{self.train_steps}.pkl"
         else:
             path_ckpt = path
         torch.save(data, str(path_ckpt))
