@@ -1,5 +1,6 @@
 import time
 import subprocess
+from typing import Literal
 from pathlib import Path
 from pprint import pprint
 from katarl2.common.utils import cvt_string_time
@@ -8,31 +9,57 @@ PATH_NOHUP_OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 sleep_time = 0
 
+ppo_type2suffix = {  # suffix for action_type and env_subcommand
+    'basic': '',
+    'simba': '-simba'
+}
+
 # 配置任务
+ppo_type: Literal['basic', 'simba'] = 'basic'
 tasks = [
-    # (env_subcommand, env_name, cuda_list, seed_list)
-    # Envpool (no render)
-    ("env:envpool", 'Assault-v5',          [0, 0, 0], [0, 1, 2]),
-    ("env:envpool", 'Asterix-v5',          [0, 0, 0], [0, 1, 2]),
-    ("env:envpool", 'Boxing-v5',           [0, 0, 0], [0, 1, 2]),
-    ("env:envpool", 'Breakout-v5',         [1, 1, 1], [0, 1, 2]),
-    ("env:envpool", 'Phoenix-v5',          [1, 1, 1], [0, 1, 2]),
-    ("env:envpool", 'Pong-v5',             [1, 1, 1], [0, 1, 2]),
-    ("env:envpool", 'Qbert-v5',            [6, 6, 6], [0, 1, 2]),
-    ("env:envpool", 'Seaquest-v5',         [6, 6, 6], [0, 1, 2]),
-    ("env:envpool", 'UpNDown-v5',          [6, 6, 6], [0, 1, 2]),
-    ("env:envpool", 'WizardOfWor-v5',      [2, 2, 5], [0, 1, 2]),
-    # Gymnasium (can render)
-    ("env:gym", 'Assault-v5',          [7, 7, 7], [0, 1, 2]),
-    ("env:gym", 'Asterix-v5',          [7, 7, 7], [0, 1, 2]),
-    ("env:gym", 'Boxing-v5',           [7, 7, 7], [0, 1, 2]),
-    ("env:gym", 'Breakout-v5',         [7, 7, 7], [0, 1, 2]),
-    ("env:gym", 'Phoenix-v5',          [7, 7, 7], [0, 1, 2]),
-    ("env:gym", 'Pong-v5',             [7, 7, 7], [0, 1, 2]),
-    ("env:gym", 'Qbert-v5',            [7, 7, 7], [0, 1, 2]),
-    ("env:gym", 'Seaquest-v5',         [7, 7, 7], [0, 1, 2]),
-    ("env:gym", 'UpNDown-v5',          [7, 7, 7], [0, 1, 2]),
-    ("env:gym", 'WizardOfWor-v5',      [7, 7, 7], [0, 1, 2]),
+    # (action_type, env_subcommand, env_name, cuda_list, seed_list)
+    # # Discrete Envpool (no render)
+    ("agent:disc", "env:envpool-atari", 'Assault-v5',       [0, 0, 0], [0, 1, 2]),
+    ("agent:disc", "env:envpool-atari", 'Asterix-v5',       [0, 0, 0], [0, 1, 2]),
+    ("agent:disc", "env:envpool-atari", 'Boxing-v5',        [1, 1, 1], [0, 1, 2]),
+    ("agent:disc", "env:envpool-atari", 'Breakout-v5',      [1, 1, 1], [0, 1, 2]),
+    ("agent:disc", "env:envpool-atari", 'Phoenix-v5',       [2, 2, 2], [0, 1, 2]),
+    ("agent:disc", "env:envpool-atari", 'Pong-v5',          [2, 2, 2], [0, 1, 2]),
+    ("agent:disc", "env:envpool-atari", 'Qbert-v5',         [3, 3, 3], [0, 1, 2]),
+    ("agent:disc", "env:envpool-atari", 'Seaquest-v5',      [3, 3, 3], [0, 1, 2]),
+    ("agent:disc", "env:envpool-atari", 'UpNDown-v5',       [4, 4, 4], [0, 1, 2]),
+    ("agent:disc", "env:envpool-atari", 'WizardOfWor-v5',   [4, 4, 4], [0, 1, 2]),
+    # # Discrete Gymnasium (can render)
+    ("agent:disc", "env:gym-atari", 'Assault-v5',           [7, 7, 7], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'Asterix-v5',           [7, 7, 7], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'Boxing-v5',            [7, 7, 7], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'Breakout-v5',          [7, 7, 7], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'Phoenix-v5',           [7, 7, 7], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'Pong-v5',              [7, 7, 7], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'Qbert-v5',             [7, 7, 7], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'Seaquest-v5',          [7, 7, 7], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'UpNDown-v5',           [7, 7, 7], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'WizardOfWor-v5',       [7, 7, 7], [0, 1, 2]),
+    # Continuous
+    ("agent:cont", "env:gym-mujoco", "Ant-v4",              [6, 6, 6], [0, 1, 2]),
+    ("agent:cont", "env:gym-mujoco", "HalfCheetah-v4",      [0, 0, 0], [0, 1, 2]),
+    ("agent:cont", "env:gym-mujoco", "Hopper-v4",           [1, 1, 1], [0, 1, 2]),
+    ("agent:cont", "env:gym-mujoco", "HumanoidStandup-v4",  [7, 7, 7], [0, 1, 2]),
+    ("agent:cont", "env:gym-mujoco", "Humanoid-v4",         [2, 2, 2], [0, 1, 2]),
+    ("agent:cont", "env:gym-mujoco", "InvertedPendulum-v4", [3, 3, 3], [0, 1, 2]),
+    ("agent:cont", "env:gym-mujoco", "Pusher-v5",           [4, 4, 4], [0, 1, 2]),
+    ("agent:cont", "env:gym-mujoco", "Walker2d-v4",         [5, 5, 5], [0, 1, 2]),
+    # # DMC Easy
+    ("agent:cont", "env:dmc", "walker-walk",                [2, 2, 2], [0, 1, 2]),
+    ("agent:cont", "env:dmc", "walker-run",                 [0, 0, 0], [0, 1, 2]),
+    # # DMC HARD
+    ("agent:cont", "env:dmc", "humanoid-walk",              [3, 3, 3], [0, 1, 2]),
+    ("agent:cont", "env:dmc", "dog-walk",                   [6, 6, 6], [0, 1, 2]),
+    ("agent:cont", "env:dmc", "humanoid-run",               [1, 1, 1], [0, 1, 2]),
+    ("agent:cont", "env:dmc", "dog-run",                    [2, 2, 2], [0, 1, 2]),
+    ("agent:cont", "env:dmc", "dog-trot",                   [3, 3, 3], [0, 1, 2]),
+    ("agent:cont", "env:dmc", "humanoid-stand",             [4, 4, 4], [0, 1, 2]),
+    ("agent:cont", "env:dmc", "dog-stand",                  [6, 6, 6], [0, 1, 2]),
 ]
 
 # 额外参数（可选）
@@ -65,10 +92,12 @@ def run_command(cmd):
 
 if __name__ == "__main__":
     total = 0
-    for env_subcommand, env_name, cuda_list, seed_list in tasks:
+    ppo_type_suffix = ppo_type2suffix[ppo_type]
+    for action_type, env_subcommand, env_name, cuda_list, seed_list in tasks:
         for cuda_id, seed in zip(cuda_list, seed_list):
             cmd = base_cmd + [
-                env_subcommand,
+                action_type + ppo_type_suffix,
+                env_subcommand + ppo_type_suffix,
                 "--env.env-name", env_name,
                 "--env.seed", str(seed),
                 "--agent.seed", str(seed),
@@ -76,7 +105,7 @@ if __name__ == "__main__":
             ] + extra_args
 
             # 用 nohup 启动并输出到对应 log 文件
-            log_file = str(PATH_NOHUP_OUT_DIR / f"ppo_{env_subcommand}_{env_name}_seed{seed}_{time.strftime('%Y%m%d_%H%M%S')}.log")
+            log_file = str(PATH_NOHUP_OUT_DIR / f"{ppo_type}_ppo_{env_subcommand}_{env_name}_seed{seed}_{time.strftime('%Y%m%d_%H%M%S')}.log")
             full_cmd = ["nohup"] + cmd + [">", log_file, "2>&1", "&", "echo", "$!"]
             pid = subprocess.check_output(" ".join(full_cmd), shell=True).decode().strip()
             # os.system(" ".join(full_cmd))

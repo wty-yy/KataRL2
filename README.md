@@ -23,8 +23,10 @@
 ### 算法
 | 算法 | `Box` | `Discrete` | `MultiDiscrete` | 网络结构 |
 | - | - | - | - | - |
-| SAC | ✔️ | ❌ | ❌ | MLP |
-| SimbaSAC | ✔️ | ❌ | ❌ | MLP |
+| SAC | ✔️ | ❌️ | ❌️ | MLP |
+| SimbaSAC | ✔️ | ❌️ | ❌️ | MLP |
+| PPO | ✔️ | ✔️ | ❌️ | MLP, CNN+MLP |
+| SimbaPPO | ✔️ | ✔️️ | ❌️ | MLP, CNN+MLP |
 
 ### 环境
 1. gymnaisum: mujoco-py

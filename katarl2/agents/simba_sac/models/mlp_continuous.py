@@ -6,7 +6,7 @@ import torch.distributions as td
 
 from gymnasium.spaces import Box
 import numpy as np
-from katarl2.agents.simba_sac.model.residual_encoder import SACResidualEncoder, init_orthogonal_linear
+from katarl2.agents.common.networks.residual_encoder import ResidualEncoder, init_orthogonal_linear
 
 class SoftQNetwork(nn.Module):
     def __init__(
@@ -15,7 +15,7 @@ class SoftQNetwork(nn.Module):
             num_blocks: int, hidden_dim: int
         ):
         super().__init__()
-        self.encoder = SACResidualEncoder(
+        self.encoder = ResidualEncoder(
             in_dim=np.array(observation_space.shape).prod() + np.prod(action_space.shape),
             hidden_dim=hidden_dim,
             num_blocks=num_blocks
@@ -39,7 +39,7 @@ class Actor(nn.Module):
             num_blocks: int, hidden_dim: int
         ):
         super().__init__()
-        self.encoder = SACResidualEncoder(
+        self.encoder = ResidualEncoder(
             in_dim=np.array(observation_space.shape).prod(),
             hidden_dim=hidden_dim,
             num_blocks=num_blocks

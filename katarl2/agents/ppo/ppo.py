@@ -16,13 +16,17 @@ from tqdm import tqdm
 from pathlib import Path
 from katarl2.agents.common.utils import set_seed_everywhere, enable_deterministic_run
 from katarl2.agents.common.base_agent import BaseAgent
-from katarl2.agents.ppo.model.cnn_discrete import (
+from katarl2.agents.ppo.models import (
     Agent,
     Agent_IN, Agent_IN_before_norm,
     Agent_LN, Agent_LN_before_norm,
+    Agent_MLP_continuous,
+    Agent_MLP_continuous_Simba,
+    Agent_CNN_Simba,
 )
 from katarl2.common import path_manager
 from katarl2.common.utils import cvt_string_time
+from katarl2.agents.common.running_mean_std import RunningMeanStd
 
 class PPO(BaseAgent):
     def __init__(
@@ -42,7 +46,10 @@ class PPO(BaseAgent):
 
         self.obs_space: gym.Space = cfg.obs_space
         self.act_space: gym.Space = cfg.act_space
-        assert isinstance(self.act_space, gym.spaces.Discrete), f"[ERROR] Only discrete action space is supported, but current action space={type(self.act_space)}"
+        if cfg.action_type == 'discrete':
+            assert isinstance(self.act_space, gym.spaces.Discrete), f"[ERROR] Only discrete action space is supported, but current action space={type(self.act_space)}"
+        elif cfg.action_type == 'continuous':
+            assert isinstance(self.act_space, gym.spaces.Box), f"[ERROR] Only continuous action space is supported, but current action space={type(self.act_space)}"
 
         """ Seed """
         set_seed_everywhere(cfg.seed)
@@ -50,21 +57,47 @@ class PPO(BaseAgent):
             enable_deterministic_run()
 
         """ Model """
-        if cfg.layer_norm_network and not cfg.norm_before_activate_network:
-            print("[INFO] Use default Agent_LN")
-            self.agent = Agent_LN(self.act_space).to(self.device)
-        elif cfg.layer_norm_network and cfg.norm_before_activate_network:
-            print("[INFO] Use default Agent_LN_before_norm")
-            self.agent = Agent_LN_before_norm(self.act_space).to(self.device)
-        elif cfg.instance_norm_network and not cfg.norm_before_activate_network:
-            print("[INFO] Use default Agent_IN")
-            self.agent = Agent_IN(self.act_space).to(self.device)
-        elif cfg.instance_norm_network and cfg.norm_before_activate_network:
-            print("[INFO] Use default Agent_IN_before_norm")
-            self.agent = Agent_IN_before_norm(self.act_space).to(self.device)
+        if cfg.policy_name == 'Basic':
+            if cfg.action_type == 'discrete':
+                if cfg.layer_norm_network and not cfg.norm_before_activate_network:
+                    print("[INFO] Use default Agent_LN")
+                    self.agent = Agent_LN(self.act_space).to(self.device)
+                elif cfg.layer_norm_network and cfg.norm_before_activate_network:
+                    print("[INFO] Use default Agent_LN_before_norm")
+                    self.agent = Agent_LN_before_norm(self.act_space).to(self.device)
+                elif cfg.instance_norm_network and not cfg.norm_before_activate_network:
+                    print("[INFO] Use default Agent_IN")
+                    self.agent = Agent_IN(self.act_space).to(self.device)
+                elif cfg.instance_norm_network and cfg.norm_before_activate_network:
+                    print("[INFO] Use default Agent_IN_before_norm")
+                    self.agent = Agent_IN_before_norm(self.act_space).to(self.device)
+                else:
+                    print("[INFO] Use default agent")
+                    self.agent = Agent(self.act_space).to(self.device)
+            elif cfg.action_type == 'continuous':
+                self.agent = Agent_MLP_continuous(self.obs_space, self.act_space).to(self.device)
+        elif cfg.policy_name == 'Simba':
+            if cfg.action_type == 'discrete':
+                self.agent = Agent_CNN_Simba(
+                    self.act_space,
+                    cfg.actor_hidden_dim, cfg.actor_num_blocks,
+                    cfg.critic_hidden_dim, cfg.critic_num_blocks
+                ).to(self.device)
+            elif cfg.action_type == 'continuous':
+                self.agent = Agent_MLP_continuous_Simba(
+                    self.obs_space, self.act_space,
+                    cfg.critic_num_blocks, cfg.critic_hidden_dim,
+                    cfg.actor_num_blocks, cfg.actor_hidden_dim
+                ).to(self.device)
+        
+        """ Create/Inherit Running Statistics Normalization """
+        if cfg.policy_name == 'Simba':
+            if cfg.obs_rms is None:
+                cfg.obs_rms = RunningMeanStd(shape=self.obs_space.shape)
+            self.rms = cfg.obs_rms
         else:
-            print("[INFO] Use default agent")
-            self.agent = Agent(self.act_space).to(self.device)
+            self.rms = None
+
         if cfg.optimizer == 'adam':
             print(f"Use Adam, weight_decay={cfg.weight_decay}")
             self.optimizer = optim.Adam(self.agent.parameters(), lr=cfg.learning_rate, eps=1e-5, weight_decay=cfg.weight_decay)
@@ -79,8 +112,15 @@ class PPO(BaseAgent):
         self.rewards = torch.zeros((cfg.num_steps, cfg.num_envs)).to(self.device)
         self.dones = torch.zeros((cfg.num_steps, cfg.num_envs)).to(self.device)
         self.values = torch.zeros((cfg.num_steps, cfg.num_envs)).to(self.device)
+    
+    def try_rms(self, obs, update=False, normalize=False):
+        if self.rms is not None:
+            if update: self.rms.update(obs)
+            if normalize: obs = self.rms.normalize(obs)
+        return obs
 
     def predict(self, obs: np.ndarray):
+        obs = self.try_rms(obs, normalize=True)
         action = self.agent.get_action_and_value(torch.Tensor(obs).to(self.device), train=False)[0]
         return action.detach().cpu().numpy()
     
@@ -97,6 +137,7 @@ class PPO(BaseAgent):
 
         """ Training """
         next_obs, _ = envs.reset()
+        self.try_rms(next_obs, update=True)
         next_obs = torch.Tensor(next_obs).to(self.device)
         next_done = torch.zeros(cfg.num_envs).to(self.device)
 
@@ -119,20 +160,21 @@ class PPO(BaseAgent):
 
                 # ALGO LOGIC: action logic
                 with torch.no_grad():
-                    action, logprob, _, value = self.agent.get_action_and_value(next_obs)
+                    action, logprob, _, value = self.agent.get_action_and_value(self.try_rms(next_obs, normalize=True))
                     self.values[step] = value.flatten()
                 self.actions[step] = action
                 self.logprobs[step] = logprob
 
                 # TRY NOT TO MODIFY: execute the game and log data.
                 next_obs, reward, terminations, truncations, infos = envs.step(action.cpu().numpy())
+                self.try_rms(next_obs, update=True)
                 next_done = np.logical_or(terminations, truncations)
                 self.rewards[step] = torch.tensor(reward).to(self.device).view(-1)
                 next_obs, next_done = torch.Tensor(next_obs).to(self.device), torch.Tensor(next_done).to(self.device)
 
             # bootstrap value if not done
             with torch.no_grad():
-                next_value = self.agent.get_value(next_obs).reshape(1, -1)
+                next_value = self.agent.get_value(self.try_rms(next_obs, normalize=True)).reshape(1, -1)
                 advantages = torch.zeros_like(self.rewards).to(self.device)
                 lastgaelam = 0
                 for t in reversed(range(cfg.num_steps)):
@@ -148,11 +190,16 @@ class PPO(BaseAgent):
 
             # flatten the batch
             b_obs = self.obs.reshape((-1,) + self.obs_space.shape)
+            b_obs = self.try_rms(b_obs, normalize=True)
             b_logprobs = self.logprobs.reshape(-1)
             b_actions = self.actions.reshape((-1,) + self.act_space.shape)
             b_advantages = advantages.reshape(-1)
             b_returns = returns.reshape(-1)
             b_values = self.values.reshape(-1)
+
+            # Convert actions to appropriate type
+            if cfg.action_type == 'discrete':
+                b_actions = b_actions.long()
 
             # Optimizing the policy and value network
             b_inds = np.arange(cfg.batch_size)
@@ -164,7 +211,7 @@ class PPO(BaseAgent):
                     end = start + cfg.minibatch_size
                     mb_inds = b_inds[start:end]
 
-                    _, newlogprob, entropy, newvalue = self.agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
+                    _, newlogprob, entropy, newvalue = self.agent.get_action_and_value(b_obs[mb_inds], b_actions[mb_inds])
                     logratio = newlogprob - b_logprobs[mb_inds]
                     ratio = logratio.exp()
 
@@ -235,7 +282,7 @@ class PPO(BaseAgent):
                 if cfg.verbose == 1 and time.time() - last_verbose_time > 10:
                     last_verbose_time = time.time()
                     time_left = (cfg.num_iterations - iteration) * cfg.num_steps * cfg.num_envs * self.env_cfg.max_and_skip / SPS
-                    print(f"[INFO] {iteration}/{cfg.num_iterations} iters, SPS: {SPS}, [{cvt_string_time(time_used)}<{cvt_string_time(time_left)}]")
+                    print(f"[INFO] {iteration}/{cfg.num_iterations} iters, SPS: {SPS}, [{cvt_string_time(time_used)}<{cvt_string_time(time_left)}], total time used: {cvt_string_time(time.time() - fixed_start_time)}")
             
             """ Evaluating """
             if (
@@ -243,18 +290,15 @@ class PPO(BaseAgent):
                 self.interaction_step - last_eval_interaction_step >= cfg.eval_per_interaction_step or
                 iteration == cfg.num_iterations
             ):
-                print("[INFO] Start Evaluation...", end='', flush=True)
-                t1 = time.time()
                 last_eval_interaction_step = self.interaction_step
-                self.eval(env_step=self.env_step)
-                eval_time = time.time() - t1
+                eval_time = self.eval(env_step=self.env_step)
                 start_time += eval_time
-                print(f"Eval time used: {cvt_string_time(eval_time)}, total time used: {cvt_string_time(time.time() - fixed_start_time)}")
 
     def save(self, path: str | Path = 'default'):
         to_cpu = lambda data: {k: v.to('cpu') for k, v in data.items()}
         data = {
             'config': self.cfg,
+            'env_config': self.env_cfg,
             'agent': to_cpu(self.agent.state_dict()),
         }
         if path == 'default':
@@ -273,7 +317,7 @@ class PPO(BaseAgent):
     def load(cls, path: str | Path, device: str | torch.device):
         data = torch.load(str(path), map_location=device, weights_only=False)
         data['config'].device = device
-        self = cls(cfg=data['config'])
+        self = cls(cfg=data['config'], env_cfg=data['env_config'])
         self.agent.load_state_dict(data['agent'])
         print(f"[INFO] Load PPO model from {path} successfully.")
         return self

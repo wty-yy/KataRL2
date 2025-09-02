@@ -12,7 +12,7 @@ from pathlib import Path
 from torch.utils.tensorboard import SummaryWriter
 from katarl2.agents.common.utils import set_seed_everywhere, enable_deterministic_run
 from katarl2.agents.sac.sac_cfg import SACConfig
-from katarl2.agents.sac.model.mlp_continuous import Actor, SoftQNetwork
+from katarl2.agents.sac.models.mlp_continuous import Actor, SoftQNetwork
 from katarl2.common import path_manager
 from katarl2.agents.common.buffers import ReplayBuffer
 from typing import Optional

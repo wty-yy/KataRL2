@@ -2,9 +2,13 @@
 PPO (from cleanrl)
 启动脚本: bash ./benchmarks/ppo_run_experiments.py
 查看可用参数: python ./demos/ppo.py --help
-单独启动训练 (子命令选择 {env:envpool, env:gym}):
-python ./demos/ppo.py env:envpool --env.env-name Breakout-v5 --agent.num-env-steps 10000 --agent.verbose 2 --debug
-python ./demos/ppo.py env:gym --env.env-name Breakout-v5 --agent.num-env-steps 10000 --agent.verbose 2 --agent.device cuda:1 --debug
+单独启动训练 (子命令选择 {agent:disc, agent:cont} {env:envpool-atari, env:gym-atari, env:gym-mujoco, env:dmc, env:gym-mujoco-simba, env:dmc-simba}):
+python ./demos/ppo.py agent:disc env:envpool-atari --env.env-name Breakout-v5 --agent.num-env-steps 10000 --agent.verbose 2 --debug
+python ./demos/ppo.py agent:disc env:gym-atari --env.env-name Breakout-v5 --agent.num-env-steps 10000 --agent.verbose 2 --debug
+python ./demos/ppo.py agent:cont env:gym-mujoco --env.env-name Hopper-v4 --agent.num-env-steps 10000 --agent.verbose 2 --debug
+python ./demos/ppo.py agent:cont env:dmc --env.env-name walker-walk --agent.num-env-steps 10000 --agent.verbose 2 --debug
+python ./demos/ppo.py agent:cont-simba env:gym-mujoco-simba --env.env-name Hopper-v4 --agent.num-env-steps 10000 --agent.verbose 2 --debug
+python ./demos/ppo.py agent:cont-simba env:dmc-simba --env.env-name walker-walk --agent.num-env-steps 10000 --agent.verbose 2 --debug
 """
 import sys
 from pathlib import Path
@@ -17,8 +21,12 @@ os.environ["MKL_NUM_THREADS"] = "2"
 import tyro
 from typing import Union, Annotated
 from dataclasses import dataclass
-from katarl2.agents import PPO, PPOConfig
-from katarl2.envs import EnvpoolAtariConfig, GymAtariEnvConfig
+from katarl2.agents import PPO, PPODiscreteConfig, PPOContinuousConfig, SimbaPPOContinuousConfig, SimbaPPODiscreteConfig
+from katarl2.agents.ppo.ppo_env_cfg import (
+    PPOEnvpoolAtariEnvConfig, PPOGymAtariEnvConfig,
+    PPODMCEnvConfig, PPOGymMujocoEnvConfig,
+    SimbaPPODMCEnvConfig, SimbaPPOGymMujocoEnvConfig
+)
 from katarl2.common.logger import LogConfig, get_tensorboard_writer
 from katarl2.envs.env_maker import make_envs
 from katarl2.common import path_manager
@@ -26,21 +34,28 @@ from katarl2.common.video_process import cvt_to_gif
 from pprint import pprint
 
 @dataclass
-class PPOEnvpoolAtariEnvConfig(EnvpoolAtariConfig):
-    num_envs: int = 8
-    num_eval_envs: int = 32
-
-@dataclass
-class PPOGymAtariEnvConfig(GymAtariEnvConfig):
-    num_envs: int = 8
-    num_eval_envs: int = 32
-
-@dataclass
 class Args:
-    agent: PPOConfig
+    agent: Union[
+        # Discrete action space
+        Annotated[PPODiscreteConfig, tyro.conf.subcommand('disc')],
+        # Continuous action space
+        Annotated[PPOContinuousConfig, tyro.conf.subcommand('cont')],
+        # Discrete action space with Simba tricks
+        Annotated[SimbaPPODiscreteConfig, tyro.conf.subcommand('disc-simba')],
+        # Continuous action space with Simba tricks
+        Annotated[SimbaPPOContinuousConfig, tyro.conf.subcommand('cont-simba')],
+    ]
     env: Union[
-        Annotated[PPOEnvpoolAtariEnvConfig, tyro.conf.subcommand('envpool')],
-        Annotated[PPOGymAtariEnvConfig, tyro.conf.subcommand('gym')],
+        # Env Basic Config
+        Annotated[PPODMCEnvConfig, tyro.conf.subcommand('dmc')],
+        Annotated[PPOGymMujocoEnvConfig, tyro.conf.subcommand('gym-mujoco')],
+        Annotated[PPOEnvpoolAtariEnvConfig, tyro.conf.subcommand('envpool-atari')],
+        Annotated[PPOGymAtariEnvConfig, tyro.conf.subcommand('gym-atari')],
+        # Env Simba Config
+        Annotated[SimbaPPODMCEnvConfig, tyro.conf.subcommand('dmc-simba')],
+        Annotated[SimbaPPOGymMujocoEnvConfig, tyro.conf.subcommand('gym-mujoco-simba')],
+        Annotated[PPOEnvpoolAtariEnvConfig, tyro.conf.subcommand('envpool-atari-simba')],  # same
+        Annotated[PPOGymAtariEnvConfig, tyro.conf.subcommand('gym-atari-simba')],  # same
     ]
     logger: LogConfig
     debug: bool = False

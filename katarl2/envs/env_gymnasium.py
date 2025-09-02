@@ -13,6 +13,7 @@ from typing import Any
 @dataclass
 class GymAtariEnvConfig(EnvConfig):
     max_episode_steps: int = 108000
+    max_and_skip: int = 4
     atari_wrappers: bool = True
     env_type: Literal['gymnasium'] = 'gymnasium'
     env_name: Literal[
@@ -35,8 +36,21 @@ class GymMujocoEnvConfig(EnvConfig):
     max_episode_steps: int = 1000
     env_type: Literal['gymnasium'] = 'gymnasium'
     env_name: Literal[
-        'Ant-v4', 'HalfCheetah-v4', 'Hopper-v4', 'HumanoidStandup-v4', 'Humanoid-v4',
-        'InvertedPendulum-v4', 'Pusher-v5', 'Walker2d-v4'
+        'Ant-v4',
+        'Ant-v5',
+        'HalfCheetah-v4',
+        'HalfCheetah-v5',
+        'Hopper-v4',
+        'Hopper-v5',
+        'HumanoidStandup-v4',
+        'HumanoidStandup-v5',
+        'Humanoid-v4',
+        'Humanoid-v5',
+        'InvertedPendulum-v4',
+        'InvertedPendulum-v5',
+        'Pusher-v5',
+        'Walker2d-v4',
+        'Walker2d-v5',
     ] = 'Hopper-v4'
 
 class SeedWrapper(gym.Wrapper):
