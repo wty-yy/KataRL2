@@ -28,11 +28,13 @@ from pprint import pprint
 
 @dataclass
 class SimbaDMCEnvConfig(DMCEnvConfig):
+    action_repeat_wrapper: bool = True
     action_repeat: int = 2
     rescale_action: bool = True
 
 @dataclass
 class SimbaMujocoEnvConfig(GymMujocoEnvConfig):
+    action_repeat_wrapper: bool = True
     action_repeat: int = 2
     rescale_action: bool = True
 

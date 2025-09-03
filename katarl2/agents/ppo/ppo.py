@@ -42,7 +42,7 @@ class PPO(BaseAgent):
         if env_cfg is not None:
             cfg.batch_size = int(env_cfg.num_envs * cfg.num_steps)
             cfg.minibatch_size = int(cfg.batch_size // cfg.num_minibatches)
-            cfg.num_iterations = cfg.num_env_steps // env_cfg.max_and_skip // cfg.batch_size
+            cfg.num_iterations = cfg.num_env_steps // env_cfg.action_repeat // cfg.batch_size
 
         self.obs_space: gym.Space = cfg.obs_space
         self.act_space: gym.Space = cfg.act_space
@@ -152,7 +152,7 @@ class PPO(BaseAgent):
                 self.optimizer.param_groups[0]["lr"] = lrnow
 
             for step in range(0, cfg.num_steps):
-                self.env_step += cfg.num_envs * self.env_cfg.max_and_skip
+                self.env_step += cfg.num_envs * self.env_cfg.action_repeat
                 self.interaction_step += 1
 
                 self.obs[step] = next_obs
@@ -281,7 +281,7 @@ class PPO(BaseAgent):
                     self.logger.add_scalar(name, value, self.env_step)
                 if cfg.verbose == 1 and time.time() - last_verbose_time > 10:
                     last_verbose_time = time.time()
-                    time_left = (cfg.num_iterations - iteration) * cfg.num_steps * cfg.num_envs * self.env_cfg.max_and_skip / SPS
+                    time_left = (cfg.num_iterations - iteration) * cfg.num_steps * cfg.num_envs * self.env_cfg.action_repeat / SPS
                     print(f"[INFO] {iteration}/{cfg.num_iterations} iters, SPS: {SPS}, [{cvt_string_time(time_used)}<{cvt_string_time(time_left)}], total time used: {cvt_string_time(time.time() - fixed_start_time)}")
             
             """ Evaluating """

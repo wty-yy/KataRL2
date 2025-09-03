@@ -31,7 +31,9 @@ class EnvConfig:
     # Transform function for observation
     transform_observation: Optional[Any] = None
     """ Action related """
-    # Action repeat
+    # Action repeat wrapper
+    action_repeat_wrapper: bool = False
+    # Action repeat, env_step = interaction_step * action_repeat (action_repeat used in atari is max_and_skip)
     action_repeat: int = 1
     # Rescale action space to (-1, 1) (optional)
     rescale_action: Optional[bool] = None
@@ -52,8 +54,6 @@ class EnvConfig:
     """ Atari Wrappers """
     # NoopReset, MaxAndSkip, EpisodicLife, FireReset, ClipReward, ResizeObservation, GrayScaleObservation, FrameStack
     atari_wrappers: bool = False
-    # If atari_wrappers is True, use max and skip frames
-    max_and_skip: int = 1
     """ Logger (Update by env_maker) """
     path_logs: Optional[Path] = None
 

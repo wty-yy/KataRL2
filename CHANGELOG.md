@@ -51,6 +51,7 @@ P.S.
 
 ## v0.4 (20250903 -)
 1. 由于无法保证envpool和gymnasium的实验一致性, 删除了envpoolq全部环境, 最后存在版本为v0.3 9004d097a461996f19365fc3287acbb50c614624
+2. 统一max_and_skip为action_repeat, 并加入action_repeat_wrapper来是否用action_repeat_wrppaer或atari_wrappers
 
 TODO:
 - [ ] 加入DreamerV3

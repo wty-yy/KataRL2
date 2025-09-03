@@ -48,5 +48,6 @@ class SimbaPPODMCEnvConfig(DMCEnvConfig):
     num_envs: int = 1
     num_eval_envs: int = 10
 
+    action_repeat_wrapper: bool = True
     action_repeat: int = 2
     rescale_action: bool = True
