@@ -90,7 +90,6 @@ class SimbaSAC(BaseAgent):
         """ Running statistics normalization """
         self.rms = RunningMeanStd(self.obs_space.shape)
 
-        self.train_steps = 0
         self.interaction_step = 0
     
     def predict(self, obs):
@@ -156,7 +155,7 @@ class SimbaSAC(BaseAgent):
 
             """ Training """
             for _ in range(cfg.updates_per_interaction_step):
-                self.train_steps += 1
+                cfg.num_train_steps += 1
                 data = self.rb.sample(cfg.batch_size, to_tensor=False)
                 observations = self.rms.normalize(data.observations)
                 next_observations = self.rms.normalize(data.next_observations)
@@ -264,11 +263,11 @@ class SimbaSAC(BaseAgent):
         if self.cfg.use_cdq:
             data['model']['qf2'] = to_cpu(self.qf2.state_dict())
         if path == 'default':
-            path_ckpt = self.PATH_CKPTS / f"{self.cfg.full_name}-{self.train_steps}.pkl"
+            path_ckpt = self.PATH_CKPTS / f"{self.cfg.full_name}-{self.cfg.num_train_steps}.pkl"
         else:
             path_ckpt = path
         torch.save(data, str(path_ckpt))
-        print(f"[INFO] Save model-{self.train_steps} to {path_ckpt}.")
+        print(f"[INFO] Save model-{self.cfg.num_train_steps} to {path_ckpt}.")
         return path_ckpt
     
     @classmethod

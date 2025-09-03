@@ -43,6 +43,8 @@ class BaseAgentConfig:
     eval_per_interaction_step: int = 25000
     # Total number of evaluation episodes
     num_eval_episodes: int = 32
+    # Number of steps trained
+    num_train_steps: int = 0
 
     """ hyper-parameters (each algorithm has diff params, here are some examples) """
     # the replay memory buffer size

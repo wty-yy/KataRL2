@@ -80,7 +80,6 @@ class SAC(BaseAgent):
             self.PATH_CKPTS = PATH_LOGS / "ckpts"
             self.PATH_CKPTS.mkdir(exist_ok=True, parents=True)
 
-        self.train_steps = 0
         self.interaction_step = 0
     
     def predict(self, obs):
@@ -127,7 +126,7 @@ class SAC(BaseAgent):
 
             # training.
             if self.interaction_step > cfg.learning_starts:
-                self.train_steps += 1
+                cfg.num_train_steps += 1
                 data = self.rb.sample(cfg.batch_size)
                 with torch.no_grad():
                     next_state_actions, next_state_log_pi, _ = self.actor.get_action(data.next_observations)
@@ -222,11 +221,11 @@ class SAC(BaseAgent):
             }
         }
         if path == 'default':
-            path_ckpt = self.PATH_CKPTS / f"{self.cfg.full_name}-{self.train_steps}.pkl"
+            path_ckpt = self.PATH_CKPTS / f"{self.cfg.full_name}-{self.cfg.num_train_steps}.pkl"
         else:
             path_ckpt = path
         torch.save(data, str(path_ckpt))
-        print(f"[INFO] Save model-{self.train_steps} to {path_ckpt}.")
+        print(f"[INFO] Save model-{self.cfg.num_train_steps} to {path_ckpt}.")
         return path_ckpt
     
     @classmethod

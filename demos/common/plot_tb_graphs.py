@@ -68,7 +68,11 @@ def human_readable_formatter(x, pos):
         else:
             return f'{val_m:.1f}M'
     elif abs(x) >= 1_000:
-        return f'{int(x / 1_000)}K'
+        val_m = x / 1_000
+        if val_m == int(val_m):
+            return f'{int(x / 1_000)}K'
+        else:
+            return f'{val_m:.1f}K'
     else:
         # For smaller numbers, show integer or one decimal place if not integer
         if x == int(x):

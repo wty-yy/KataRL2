@@ -129,7 +129,6 @@ class PPO(BaseAgent):
         envs, logger = self.envs, self.logger
         self.env_step = 0
         self.interaction_step = 0
-        self.train_step = 0
         fixed_start_time = start_time = time.time()
         last_eval_interaction_step = 0
         last_log_interaction_step = 0
@@ -205,7 +204,7 @@ class PPO(BaseAgent):
             b_inds = np.arange(cfg.batch_size)
             clipfracs = []
             for epoch in range(cfg.update_epochs):
-                self.train_step += 1
+                cfg.num_train_steps += 1
                 np.random.shuffle(b_inds)
                 for start in range(0, cfg.batch_size, cfg.minibatch_size):
                     end = start + cfg.minibatch_size
@@ -306,11 +305,11 @@ class PPO(BaseAgent):
             self.PATH_CKPTS = PATH_LOGS / "ckpts"
             self.PATH_CKPTS.mkdir(exist_ok=True, parents=True)
 
-            path_ckpt = self.PATH_CKPTS / f"{self.cfg.full_name}-{self.train_step}.pkl"
+            path_ckpt = self.PATH_CKPTS / f"{self.cfg.full_name}-{self.cfg.num_train_steps}.pkl"
         else:
             path_ckpt = path
         torch.save(data, str(path_ckpt))
-        print(f"[INFO] Save PPO model-{self.train_step} to {path_ckpt}.")
+        print(f"[INFO] Save PPO model-{self.cfg.num_train_steps} to {path_ckpt}.")
         return path_ckpt
 
     @classmethod
