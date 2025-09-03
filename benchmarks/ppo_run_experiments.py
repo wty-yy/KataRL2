@@ -1,5 +1,7 @@
 import time
 import subprocess
+import typing
+from katarl2.envs.env_gymnasium import GymAtariEnvConfig
 from typing import Literal
 from pathlib import Path
 from pprint import pprint
@@ -18,26 +20,21 @@ ppo_type2suffix = {  # suffix for action_type and env_subcommand
 ppo_type: Literal['basic', 'simba'] = 'basic'
 tasks = [
     # (action_type, env_subcommand, env_name, cuda_list, seed_list)
-    # # Discrete Envpool (no render)
-    ("agent:disc", "env:envpool-atari", 'Assault-v5',       [7, 7, 7], [0, 1, 2]),
-    ("agent:disc", "env:envpool-atari", 'Asterix-v5',       [7, 7, 7], [0, 1, 2]),
-    ("agent:disc", "env:envpool-atari", 'Boxing-v5',        [0, 0, 1], [0, 1, 2]),
-    ("agent:disc", "env:envpool-atari", 'Breakout-v5',      [1, 3, 4], [0, 1, 2]),
-    ("agent:disc", "env:envpool-atari", 'Phoenix-v5',       [2, 2, 2], [0, 1, 2]),
-    ("agent:disc", "env:envpool-atari", 'Pong-v5',          [2, 2, 2], [0, 1, 2]),
-    ("agent:disc", "env:envpool-atari", 'Qbert-v5',         [5, 5, 5], [0, 1, 2]),
-    ("agent:disc", "env:envpool-atari", 'Seaquest-v5',      [5, 5, 5], [0, 1, 2]),
-    ("agent:disc", "env:envpool-atari", 'UpNDown-v5',       [6, 6, 6], [0, 1, 2]),
-    ("agent:disc", "env:envpool-atari", 'WizardOfWor-v5',   [6, 6, 6], [0, 1, 2]),
-    # Discrete Gymnasium (can render)
-    ("agent:disc", "env:gym-atari", 'Assault-v5',           [7, 7, 7], [0, 1, 2]),
-    ("agent:disc", "env:gym-atari", 'Asterix-v5',           [7, 7, 7], [0, 1, 2]),
-    ("agent:disc", "env:gym-atari", 'Boxing-v5',            [7, 7, 7], [0, 1, 2]),
-    ("agent:disc", "env:gym-atari", 'Breakout-v5',          [7, 7, 7], [0, 1, 2]),
-    ("agent:disc", "env:gym-atari", 'Phoenix-v5',           [7, 7, 7], [0, 1, 2]),
-    ("agent:disc", "env:gym-atari", 'Pong-v5',              [7, 7, 7], [0, 1, 2]),
-    ("agent:disc", "env:gym-atari", 'Qbert-v5',             [7, 7, 7], [0, 1, 2]),
-    ("agent:disc", "env:gym-atari", 'Seaquest-v5',          [7, 7, 7], [0, 1, 2]),
+    # Discrete Gymnasium
+    ("agent:disc", "env:gym-atari", 'Assault-v5',           [6, 6, 6], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'Asterix-v5',           [6, 6, 6], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'BeamRider-v5',         [2, 2, 2], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'Boxing-v5',            [3, 3, 3], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'Breakout-v5',          [3, 3, 3], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'Enduro-v5',            [3, 3, 3], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'MontezumaRevenge-v5',  [4, 4, 4], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'MsPacman-v5',          [5, 5, 5], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'Phoenix-v5',           [4, 4, 4], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'Pitfall-v5',           [6, 6, 6], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'Pong-v5',              [4, 4, 4], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'Qbert-v5',             [5, 5, 5], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'Seaquest-v5',          [5, 5, 5], [0, 1, 2]),
+    ("agent:disc", "env:gym-atari", 'SpaceInvaders-v5',     [7, 7, 7], [0, 1, 2]),
     ("agent:disc", "env:gym-atari", 'UpNDown-v5',           [7, 7, 7], [0, 1, 2]),
     ("agent:disc", "env:gym-atari", 'WizardOfWor-v5',       [7, 7, 7], [0, 1, 2]),
     # Continuous
@@ -49,7 +46,7 @@ tasks = [
     ("agent:cont", "env:gym-mujoco", "InvertedPendulum-v4", [3, 3, 3], [0, 1, 2]),
     ("agent:cont", "env:gym-mujoco", "Pusher-v5",           [4, 4, 4], [0, 1, 2]),
     ("agent:cont", "env:gym-mujoco", "Walker2d-v4",         [5, 5, 5], [0, 1, 2]),
-    # # DMC Easy
+    # DMC Easy
     ("agent:cont", "env:dmc", "walker-walk",                [2, 2, 2], [0, 1, 2]),
     ("agent:cont", "env:dmc", "walker-run",                 [0, 0, 0], [0, 1, 2]),
     # # DMC HARD

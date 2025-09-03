@@ -2,8 +2,7 @@
 SimbaPPO (from cleanrl+simba)
 启动脚本: bash ./benchmarks/simba_ppo_run_experiments.py
 查看可用参数: python ./demos/simba_ppo.py --help
-单独启动训练 (子命令选择 {env:envpool, env:gym}):
-python ./demos/simba_ppo.py env:envpool --env.env-name Breakout-v5 --agent.num-env-steps 100000 --agent.verbose 2 --debug
+单独启动训练 (子命令选择 {env:gym}):
 """
 import sys
 from pathlib import Path
@@ -17,17 +16,12 @@ import tyro
 from typing import Annotated, Union
 from dataclasses import dataclass
 from katarl2.agents import SimbaPPO, SimbaPPOConfig
-from katarl2.envs import EnvpoolAtariConfig, GymAtariEnvConfig
+from katarl2.envs import GymAtariEnvConfig
 from katarl2.common.logger import LogConfig, get_tensorboard_writer
 from katarl2.envs.env_maker import make_envs
 from katarl2.common import path_manager
 from katarl2.common.video_process import cvt_to_gif
 from pprint import pprint
-
-@dataclass
-class SimbaPPOEnvpoolAtariConfig(EnvpoolAtariConfig):
-    num_envs: int = 8
-    num_eval_envs: int = 4
 
 @dataclass
 class SimbaPPOGymAtariConfig(GymAtariEnvConfig):
@@ -38,7 +32,6 @@ class SimbaPPOGymAtariConfig(GymAtariEnvConfig):
 class Args:
     agent: SimbaPPOConfig
     env: Union[
-        Annotated[SimbaPPOEnvpoolAtariConfig, tyro.conf.subcommand('envpool')],
         Annotated[SimbaPPOGymAtariConfig, tyro.conf.subcommand('gym')],
     ]
     logger: LogConfig

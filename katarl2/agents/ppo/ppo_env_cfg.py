@@ -2,12 +2,7 @@ import numpy as np
 from functools import partial
 from typing import Optional, Any
 from dataclasses import dataclass
-from katarl2.envs import EnvpoolAtariConfig, GymAtariEnvConfig, GymMujocoEnvConfig, DMCEnvConfig
-
-@dataclass
-class PPOEnvpoolAtariEnvConfig(EnvpoolAtariConfig):
-    num_envs: int = 8
-    num_eval_envs: int = 32
+from katarl2.envs import GymAtariEnvConfig, GymMujocoEnvConfig, DMCEnvConfig
 
 @dataclass
 class PPOGymAtariEnvConfig(GymAtariEnvConfig):

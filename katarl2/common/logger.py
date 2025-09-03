@@ -1,3 +1,4 @@
+import yaml
 from typing import Optional
 from dataclasses import dataclass
 from torch.utils.tensorboard import SummaryWriter
@@ -56,5 +57,9 @@ def get_tensorboard_writer(cfg: LogConfig, args: Optional[dict]=None) -> Summary
             "hyperparameters",
             "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in flatten_dict(args).items()])),
         )
+
+        PATH_CONFIG = path_manager.PATH_LOGS / "config.yaml"
+        with open(PATH_CONFIG, "w") as f:
+            f.write(yaml.dump(args, indent=2, allow_unicode=True))
 
     return writer

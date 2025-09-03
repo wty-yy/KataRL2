@@ -48,5 +48,9 @@ P.S.
 2. NormalizeReward有一个小细节, reward的RMS计算指标是return的RMS, 并且归一化并不减去均值, 而只是除以标准差, 参考: [Gamma in VecNormalize for rms updates.](https://github.com/openai/baselines/issues/538)
 3. 虽然lambda函数无法用pkl打包, 但可以用functools.partial或者返回包装的thunk函数替代lambda函数
 
+
+## v0.4 (20250903 -)
+1. 由于无法保证envpool和gymnasium的实验一致性, 删除了envpoolq全部环境, 最后存在版本为v0.3 9004d097a461996f19365fc3287acbb50c614624
+
 TODO:
 - [ ] 加入DreamerV3

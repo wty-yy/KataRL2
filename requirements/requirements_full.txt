@@ -8,5 +8,3 @@ tensorboard
 matplotlib
 dm_control
 shimmy
-envpool==0.8.4
-numpy<2.0  # envpool dependency

@@ -82,5 +82,3 @@ pip install -r requirements/requirements_full.txt
 ## 完成的实验
 ### SAC vs PPO vs Simba Version (Continuous)
 ![sac_vs_ppo_vs_simba](./assets/sac_vs_ppo_vs_simba.png)
-### PPO Atari Envpool vs Gymnaisum
-![ppo_atari_envpool_vs_gymnasium](./assets/ppo_atari_envpool_vs_gymnasium.png)

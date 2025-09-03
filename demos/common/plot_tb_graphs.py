@@ -165,7 +165,7 @@ def main():
     parser.add_argument("--dpi", type=int, default=160, help="Figure DPI.")
     parser.add_argument("--avail-algos", nargs='+', default=['sac'], help="List of available algorithms.")
     parser.add_argument("--avail-envs", nargs='+', default=None, help="List of available environments.")
-    parser.add_argument("--ignore-env-suit-name", action='store_true', help="Ignore environment suite name (e.g. gymnaisum, dmc, envpool, ...).")
+    parser.add_argument("--ignore-env-suit-name", action='store_true', help="Ignore environment suite name (e.g. gymnaisum, dmc, ...).")
     args = parser.parse_args()
 
     os.makedirs(args.out, exist_ok=True)

@@ -4,7 +4,6 @@ from copy import deepcopy
 from katarl2.envs.common.env_cfg import EnvConfig
 from katarl2.envs.env_gymnasium import make_gymnasium_env_from_cfg
 from katarl2.envs.env_dmc import make_dmc_env_from_cfg
-from katarl2.envs.env_envpool import make_envpool_envs_from_cfg
 from gymnasium.wrappers import (
     TimeLimit, RescaleAction, TransformReward, RecordEpisodeStatistics,
     ClipAction, FlattenObservation,
@@ -28,8 +27,6 @@ def make_envs(cfg: EnvConfig) -> tuple[gym.vector.SyncVectorEnv, gym.vector.Sync
         env_fn = make_gymnasium_env_from_cfg
     elif cfg.env_type == 'dmc':
         env_fn = make_dmc_env_from_cfg
-    elif cfg.env_type == 'envpool':
-        envs_fn = make_envpool_envs_from_cfg
     else:
         raise ValueError(f"Unsupported environment type: {cfg.env_type}.")
 
@@ -89,12 +86,8 @@ def make_envs(cfg: EnvConfig) -> tuple[gym.vector.SyncVectorEnv, gym.vector.Sync
         envs = gym.vector.SyncVectorEnv(envs_list, autoreset_mode=AutoresetMode.SAME_STEP)
         return envs
     
-    if cfg.env_type == 'envpool':
-        train_envs = envs_fn(cfg, train=True)
-        eval_envs = envs_fn(cfg, train=False)
-    else:
-        train_envs = make_venv(cfg.num_envs, train=True)
-        eval_envs = make_venv(cfg.num_eval_envs, train=False)
+    train_envs = make_venv(cfg.num_envs, train=True)
+    eval_envs = make_venv(cfg.num_eval_envs, train=False)
 
     return train_envs, eval_envs
     
