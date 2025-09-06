@@ -1,3 +1,8 @@
+"""
+和cnn_discrete区别:
+1. MLP中加入Residual Block
+2. 输入的图像无需 /255
+"""
 import torch
 from torch import nn
 import gymnasium as gym
@@ -65,10 +70,9 @@ class Agent(nn.Module):
         self.critic = Critic(hidden_dim=critic_hidden_dim, num_blocks=critic_num_blocks)
 
     def get_value(self, x):
-        return self.critic(x / 255.0)
+        return self.critic(x)
 
     def get_action_and_value(self, x, action = None, train: bool = True):
-        x = x / 255.0
         logits = self.actor(x)
         if not train:
             action = logits.argmax(dim=-1)

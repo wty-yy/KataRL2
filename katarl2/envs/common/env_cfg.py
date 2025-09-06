@@ -1,11 +1,32 @@
 from pathlib import Path
 import gymnasium as gym
-from typing import Literal, Optional, Annotated, Any
-from dataclasses import dataclass
+from typing import Literal, Optional, Annotated, Any, Union
+from dataclasses import dataclass, field
 from katarl2.envs.common.running_mean_std import RunningMeanStd
 
 @dataclass
-class EnvConfig:
+class AtariWrapperConfig:
+    # Maximum number of no-op steps for random initialization 
+    noop_max: int = 30
+    # Number of frames to stack 
+    stack_num: int = 4
+    # Use EpisodicLifeWrapper 
+    episodic_life: bool = False
+    # Execute FIRE action on reset 
+    use_fire_reset: bool = True
+    # Clip reward to {-1, 0, 1} 
+    reward_clip: bool = True
+    # Observation image height 
+    img_height: int = 84
+    # Observation image width 
+    img_width: int = 84
+    # Convert image to grayscale 
+    gray_scale: bool = True
+    # Number of repeated actions per step, and maximum last 2 frames
+    max_and_skip: int = 4
+
+@dataclass
+class BaseEnvConfig:
     # Environment type
     env_type: str
     # Environment name
@@ -13,11 +34,12 @@ class EnvConfig:
     # Number of parallel environments (Train)
     num_envs: int = 1
     # Number of parallel environments (Evaluate)
-    num_eval_envs: int = 1
+    num_eval_envs: int = 4
     # Whether to capture video (checkout `PATH_LOGS/video` folder)
     capture_video: bool = False
     # Random seed for environment
     seed: int = 42
+
     """ Wrappers Parameters (Update by Algo) """
     # Max episode environment steps (optional)
     max_episode_env_steps: Optional[int] = None
@@ -51,19 +73,24 @@ class EnvConfig:
     # Reward scale factor by transform: reward = reward * reward_scale
     reward_scale: float = 1.0
 
-    """ Atari Wrappers """
-    # NoopReset, MaxAndSkip, EpisodicLife, FireReset, ClipReward, ResizeObservation, GrayScaleObservation, FrameStack
-    atari_wrappers: bool = False
     """ Logger (Update by env_maker) """
     path_logs: Optional[Path] = None
 
-def get_env_name(cfg: EnvConfig) -> str:
+@dataclass
+class AtariEnvConfig(BaseEnvConfig):
+    # Atari Wrappers: NoopReset, MaxAndSkip, EpisodicLife, FireReset, ClipReward, ResizeObservation, GrayScaleObservation, FrameStack
+    atari_wrappers: bool = True
+    atari_wrapper_cfg: AtariWrapperConfig = field(default_factory=AtariWrapperConfig)
+
+EnvConfig = Union[BaseEnvConfig, AtariEnvConfig]
+
+def get_env_name(cfg: BaseEnvConfig) -> str:
     """ eg: 'Hoop-v4__gymnasium' """
     return f"{cfg.env_name}__{cfg.env_type}"
 
 if __name__ == '__main__':
     import tyro
-    args: EnvConfig = tyro.cli(EnvConfig)
+    args: BaseEnvConfig = tyro.cli(BaseEnvConfig)
     print(args)
     # cfg = EnvConfig(env_type=None, env_name=None)
     # cfg.obs_space = 123

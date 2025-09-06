@@ -9,6 +9,7 @@ import numpy as np
 from tqdm import tqdm
 import gymnasium as gym
 from pathlib import Path
+from typing import Literal
 from torch.utils.tensorboard import SummaryWriter
 from katarl2.agents.common.utils import set_seed_everywhere, enable_deterministic_run
 from katarl2.agents.sac.sac_cfg import SACConfig
@@ -89,22 +90,27 @@ class SAC(BaseAgent):
         return actions.detach().cpu().numpy()
 
     def learn(self):
-        cfg, envs, logger = self.cfg, self.envs, self.logger
+        cfg: SACConfig = self.cfg
+        envs, logger = self.envs, self.logger
         self.actor.train()
         self.qf1.train()
         self.qf2.train()
         self.qf1_target.train()
         self.qf2_target.train()
+        last_log_interaction_step = -1
+        last_eval_interaction_step = -1
+        last_save_interaction_step = -1
 
         # start the game
-        start_time = time.time()
+        fixed_start_time = start_time = time.time()
         last_verbose_time = time.time()
         obs, _ = envs.reset()
-        cfg.num_interaction_steps = cfg.num_env_steps // self.env_cfg.action_repeat
+        cfg.num_interaction_steps = cfg.total_env_steps // self.env_cfg.action_repeat
         bar = range(cfg.num_interaction_steps)
         if cfg.verbose == 2:
             bar = tqdm(bar)
         for self.interaction_step in bar:
+            cfg.num_env_steps += cfg.num_envs * self.env_cfg.action_repeat
             # put action logic here
             if self.interaction_step < cfg.learning_starts:
                 actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
@@ -170,6 +176,32 @@ class SAC(BaseAgent):
                             self.ent_optimizer.step()
                             self.ent_coef = self.log_ent_coef.exp().item()
 
+                    """ Logging """
+                    if self.interaction_step - last_log_interaction_step >= cfg.log_per_interaction_step:
+                        last_log_interaction_step = self.interaction_step
+                        time_used = time.time() - start_time
+                        SPS = int(self.interaction_step / time_used)
+                        logs = {
+                            "losses/qf1_values": qf1_a_values.mean().item(),
+                            "losses/qf2_values": qf2_a_values.mean().item(),
+                            "losses/qf1_loss": qf1_loss.item(),
+                            "losses/qf2_loss": qf2_loss.item(),
+                            "losses/qf_loss": qf_loss.item() / 2.0,
+                            "losses/actor_loss": actor_loss.item(),
+                            "losses/ent_coef": self.ent_coef,
+                            "charts/SPS": SPS,
+                            "charts/time_sec": time_used,
+                        }
+                        if cfg.autotune:
+                            logs.update({"losses/ent_coef_loss": ent_coef_loss.item()})
+                        for name, value in logs.items():
+                            logger.add_scalar(name, value, cfg.num_env_steps)
+
+                        if cfg.verbose == 1 and time.time() - last_verbose_time > 10:
+                            last_verbose_time = time.time()
+                            time_left = (cfg.num_interaction_steps - self.interaction_step) / SPS
+                            print(f"[INFO] {self.interaction_step}/{cfg.num_interaction_steps} steps, SPS: {SPS}, [{cvt_string_time(time_used)}<{cvt_string_time(time_left)}], total time used: {cvt_string_time(time.time() - fixed_start_time)}")
+
                 # update the target networks
                 if self.interaction_step % cfg.target_network_frequency == 0:
                     for param, target_param in zip(self.qf1.parameters(), self.qf1_target.parameters()):
@@ -177,40 +209,25 @@ class SAC(BaseAgent):
                     for param, target_param in zip(self.qf2.parameters(), self.qf2_target.parameters()):
                         target_param.data.copy_(cfg.tau * param.data + (1 - cfg.tau) * target_param.data)
 
-                """ Logging """
-                if self.interaction_step % cfg.log_per_interaction_step == 0:
-                    env_step = self.interaction_step * self.env_cfg.action_repeat * self.env_cfg.num_envs
-                    time_used = time.time() - start_time
-                    SPS = int(self.interaction_step / time_used)
-                    logs = {
-                        "losses/qf1_values": qf1_a_values.mean().item(),
-                        "losses/qf2_values": qf2_a_values.mean().item(),
-                        "losses/qf1_loss": qf1_loss.item(),
-                        "losses/qf2_loss": qf2_loss.item(),
-                        "losses/qf_loss": qf_loss.item() / 2.0,
-                        "losses/actor_loss": actor_loss.item(),
-                        "losses/ent_coef": self.ent_coef,
-                        "charts/SPS": SPS,
-                        "charts/time_sec": time_used,
-                    }
-                    if cfg.autotune:
-                        logs.update({"losses/ent_coef_loss": ent_coef_loss.item()})
-                    for name, value in logs.items():
-                        logger.add_scalar(name, value, env_step)
-
-                    if cfg.verbose == 1 and time.time() - last_verbose_time > 10:
-                        last_verbose_time = time.time()
-                        time_left = (cfg.num_interaction_steps - self.interaction_step) / SPS
-                        print(f"[INFO] {self.interaction_step}/{cfg.num_interaction_steps} steps, SPS: {SPS}, [{cvt_string_time(time_used)}<{cvt_string_time(time_left)}]")
-
             """ Evaluating """
             if (
-                self.interaction_step % cfg.eval_per_interaction_step == 0 or
+                last_eval_interaction_step == -1 or
+                self.interaction_step - last_eval_interaction_step >= cfg.eval_per_interaction_step or
                 self.interaction_step == cfg.num_interaction_steps - 1
             ):
-                self.eval()
+                last_eval_interaction_step = self.interaction_step
+                eval_time = self.eval()
+                start_time += eval_time
+            
+            """ Save Model """
+            if cfg.save_per_interaction_step > 0 and (
+                self.interaction_step - last_save_interaction_step >= cfg.save_per_interaction_step or
+                self.interaction_step == cfg.num_interaction_steps - 1
+            ):
+                last_save_interaction_step = self.interaction_step
+                self.save('lastest')
 
-    def save(self, path='default') -> Path:
+    def save(self, path: Literal['default', 'lastest'] | Path = 'default'):
         to_cpu = lambda data: {k: v.to('cpu') for k, v in data.items()}
         data = {
             'config': self.cfg,
@@ -220,12 +237,7 @@ class SAC(BaseAgent):
                 'qf2': to_cpu(self.qf2.state_dict())
             }
         }
-        if path == 'default':
-            path_ckpt = self.PATH_CKPTS / f"{self.cfg.full_name}-{self.cfg.num_train_steps}.pkl"
-        else:
-            path_ckpt = path
-        torch.save(data, str(path_ckpt))
-        print(f"[INFO] Save model-{self.cfg.num_train_steps} to {path_ckpt}.")
+        path_ckpt = self._save(data, path)
         return path_ckpt
     
     @classmethod

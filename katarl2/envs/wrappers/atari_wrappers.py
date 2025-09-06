@@ -3,6 +3,7 @@ from typing import Dict, SupportsFloat
 import gymnasium as gym
 import numpy as np
 from gymnasium.wrappers import FrameStackObservation, GrayscaleObservation, ResizeObservation
+from gymnasium.wrappers import atari_preprocessing
 
 class NoopResetEnv(gym.Wrapper[np.ndarray, int, np.ndarray, int]):
     """
@@ -174,14 +175,25 @@ class ClipRewardEnv(gym.RewardWrapper):
         """
         return np.sign(float(reward))
 
-def apply_atari_wrappers(env, max_and_skip: int):
-    env = NoopResetEnv(env)
-    env = MaxAndSkipEnv(env, max_and_skip)
-    env = EpisodicLifeEnv(env)
-    if "FIRE" in env.unwrapped.get_action_meanings():
+def apply_atari_wrappers(       # Compared with dreamerv3's atari env. https://github.com/danijar/dreamerv3/blob/main/embodied/envs/atari.py
+        env,
+        noop_max=30,
+        stack_num=4,            # Only diff with dreamerv3
+        episodic_life=False,    # Machado et al. 2017 (Revisitng ALE: Eval protocals) p. 6
+        use_fire_reset=True,
+        reward_clip=True,
+        img_height=84,
+        img_width=84,
+        gray_scale=True,
+        max_and_skip=4,         # repeat action 4 times, and max over last 2 frames
+    ):
+    env = NoopResetEnv(env, noop_max=noop_max) if noop_max > 0 else env
+    env = MaxAndSkipEnv(env, max_and_skip) if max_and_skip > 0 else env
+    env = EpisodicLifeEnv(env) if episodic_life else env
+    if "FIRE" in env.unwrapped.get_action_meanings() and use_fire_reset:
         env = FireResetEnv(env)
-    env = ClipRewardEnv(env)
-    env = ResizeObservation(env, (84, 84))
-    env = GrayscaleObservation(env)
-    env = FrameStackObservation(env, 4)
+    env = ClipRewardEnv(env) if reward_clip else env
+    env = ResizeObservation(env, (img_height, img_width)) if img_height != 210 or img_width != 160 else env
+    env = GrayscaleObservation(env) if gray_scale else env
+    env = FrameStackObservation(env, stack_num) if stack_num > 1 else env
     return env

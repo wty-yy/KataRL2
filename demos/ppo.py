@@ -2,7 +2,8 @@
 PPO (from cleanrl)
 启动脚本: bash ./benchmarks/ppo_run_experiments.py
 查看可用参数: python ./demos/ppo.py --help
-单独启动训练 (子命令选择 {agent:disc, agent:cont} {env:gym-atari, env:gym-mujoco, env:dmc, env:gym-mujoco-simba, env:dmc-simba}):
+单独启动训练 (子命令选择 {agent:disc, agent:cont} {env:envpool-atari, env:gym-atari, env:gym-mujoco, env:dmc, env:gym-mujoco-simba, env:dmc-simba}):
+python ./demos/ppo.py agent:disc env:envpool-atari --env.env-name Breakout-v5 --agent.num-env-steps 10000 --agent.verbose 2 --debug
 python ./demos/ppo.py agent:disc env:gym-atari --env.env-name Breakout-v5 --agent.num-env-steps 10000 --agent.verbose 2 --debug
 python ./demos/ppo.py agent:cont env:gym-mujoco --env.env-name Hopper-v4 --agent.num-env-steps 10000 --agent.verbose 2 --debug
 python ./demos/ppo.py agent:cont env:dmc --env.env-name walker-walk --agent.num-env-steps 10000 --agent.verbose 2 --debug
@@ -22,7 +23,7 @@ from typing import Union, Annotated
 from dataclasses import dataclass
 from katarl2.agents import PPO, PPODiscreteConfig, PPOContinuousConfig, SimbaPPOContinuousConfig, SimbaPPODiscreteConfig
 from katarl2.agents.ppo.ppo_env_cfg import (
-    PPOGymAtariEnvConfig,
+    PPOEnvpoolAtariEnvConfig, PPOGymAtariEnvConfig,
     PPODMCEnvConfig, PPOGymMujocoEnvConfig,
     SimbaPPODMCEnvConfig, SimbaPPOGymMujocoEnvConfig
 )
@@ -48,10 +49,12 @@ class Args:
         # Env Basic Config
         Annotated[PPODMCEnvConfig, tyro.conf.subcommand('dmc')],
         Annotated[PPOGymMujocoEnvConfig, tyro.conf.subcommand('gym-mujoco')],
+        Annotated[PPOEnvpoolAtariEnvConfig, tyro.conf.subcommand('envpool-atari')],
         Annotated[PPOGymAtariEnvConfig, tyro.conf.subcommand('gym-atari')],
         # Env Simba Config
         Annotated[SimbaPPODMCEnvConfig, tyro.conf.subcommand('dmc-simba')],
         Annotated[SimbaPPOGymMujocoEnvConfig, tyro.conf.subcommand('gym-mujoco-simba')],
+        Annotated[PPOEnvpoolAtariEnvConfig, tyro.conf.subcommand('envpool-atari-simba')],  # same
         Annotated[PPOGymAtariEnvConfig, tyro.conf.subcommand('gym-atari-simba')],  # same
     ]
     logger: LogConfig
@@ -78,6 +81,9 @@ if __name__ == '__main__':
     """ Eval """
     print("[INFO] Start Evaluation.")
     agent = PPO.load(path_ckpt, args.agent.device)
+    if args.env.env_type == 'envpool':
+        args.env.env_type = 'gymnasium'  # Render in gymnasium suite
+        args.env.atari_wrappers = True  # Render with atari wrappers
     args.env.num_eval_envs = 1
     args.env.capture_video = True
     agent.cfg.num_eval_episodes = 1

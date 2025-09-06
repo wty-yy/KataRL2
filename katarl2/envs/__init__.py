@@ -1,3 +1,4 @@
-from katarl2.envs.common.env_cfg import EnvConfig, get_env_name
-from katarl2.envs.env_dmc import DMCEnvConfig
-from katarl2.envs.env_gymnasium import GymAtariEnvConfig, GymMujocoEnvConfig
+from .common.env_cfg import EnvConfig, BaseEnvConfig, AtariEnvConfig, get_env_name
+from .env_dmc import DMCEnvConfig
+from .env_gymnasium import GymAtariEnvConfig, GymMujocoEnvConfig
+from .env_envpool import EnvpoolAtariEnvConfig

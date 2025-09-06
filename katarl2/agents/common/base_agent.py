@@ -4,6 +4,8 @@ import numpy as np
 import gymnasium as gym
 from pathlib import Path
 from typing import Optional
+from typing import Literal
+from katarl2.common import path_manager
 from katarl2.common.utils import cvt_string_time
 from katarl2.envs.common.env_cfg import EnvConfig
 from torch.utils.tensorboard import SummaryWriter
@@ -49,17 +51,17 @@ class BaseAgent:
         """ 训练, 和envs环境交互步进次数为cfg.num_env_steps """
         raise NotImplementedError("The learn method must be implemented by the agent subclass.")
     
-    def eval(self, env_step: Optional[int] = None, verbose: bool = False) -> float:
-        """ 评估, 和eval_envs环境交互步进回合次数为cfg.num_eval_episodes, 在train中记录需传入当前env_step
+    def eval(self, verbose: bool = True) -> float:
+        """ 评估, 和eval_envs环境交互步进回合次数为cfg.num_eval_episodes, 当logger存在时, 记录评估结果timestep为当前配置的num_env_steps
         仅需实现对应智能体的predict方法, 环境会自动包装RecordEpisodeStatistics记录总奖励, 从而实现以下评估代码
         Args:
-            env_step: Optional[int], 当前训练的环境交互步进总数, 用于记录日志
             verbose: bool, 是否打印详细评估结果
         Returns:
             eval_time: float, 评估所用时间, 单位秒
         """
         print("[INFO] Start Evaluation...", end='', flush=True)
         t1 = time.time()
+        # step, returns = 0, 0
 
         episodic_returns = []
         episodic_lens = []
@@ -68,6 +70,10 @@ class BaseAgent:
         while len(episodic_returns) < self.cfg.num_eval_episodes:
             action = self.predict(obs)
             obs, rewards, terminations, truncations, infos = self.eval_envs.step(action)
+            # step += 1
+            # returns += rewards
+            # returns = returns * (1 - terminations) * (1 - truncations)
+            # print(f"{step=}, {returns=}, {episodic_returns=}")
 
             if "final_info" in infos and 'episode' in infos['final_info']:
                 final_info = infos['final_info']
@@ -75,25 +81,36 @@ class BaseAgent:
                 episodic_returns.extend(final_info['episode']['r'][mask].tolist())
                 episodic_lens.extend(final_info['episode']['l'][mask].tolist())
             
-        if self.logger is not None and env_step is not None:
-            self.logger.add_scalar("charts/episodic_return", np.mean(episodic_returns), env_step)
-            self.logger.add_scalar("charts/episodic_length", np.mean(episodic_lens), env_step)
-        
-        if verbose:
-            print(f"[INFO] Eval over {len(episodic_returns)} episodes: "
-                  f"mean_return {np.mean(episodic_returns):.2f} +/- {np.std(episodic_returns):.2f}, "
-                  f"mean_length {np.mean(episodic_lens):.2f} +/- {np.std(episodic_lens):.2f}, "
-                  f"all_returns: {np.round(episodic_returns, 2)}")
+        if self.logger is not None:
+            self.logger.add_scalar("charts/episodic_return", np.mean(episodic_returns), self.cfg.num_env_steps)
+            self.logger.add_scalar("charts/episodic_length", np.mean(episodic_lens), self.cfg.num_env_steps)
 
-        eval_time = time.time() - t1
-        print(f"Eval time used: {cvt_string_time(eval_time)}, "
-              f"return: {np.mean(episodic_returns):.2f} +/- {np.std(episodic_returns):.2f}, "
-              f"length: {np.mean(episodic_lens):.2f} +/- {np.std(episodic_lens):.2f}")
+        if verbose:
+            eval_time = time.time() - t1
+            print(f"Eval time used: {cvt_string_time(eval_time)}, "
+                f"return: {np.mean(episodic_returns):.2f} +/- {np.std(episodic_returns):.2f}, "
+                f"length: {np.mean(episodic_lens):.2f} +/- {np.std(episodic_lens):.2f}")
         return eval_time
 
-    def save(self, path: str | Path = 'default'):
-        """ 保存, 使用torch.save保存所有转为cpu的模型权重和其他重要参数 """
+    def save(self, path: Literal['default', 'lastest'] | Path = 'default'):
+        """ 保存, 将需要保存的模型权重和其他重要参数打包为字典, 调用_save方法保存 """
         raise NotImplementedError("The save method must be implemented by the agent subclass.")
+    
+    def _save(self, data: dict, path: Literal['default', 'lastest'] | Path = 'default'):
+        """ 使用torch.save保存所有转为cpu的模型权重和其他重要参数 """
+        if isinstance(path, str):
+            PATH_LOGS = path_manager.PATH_LOGS
+            self.PATH_CKPTS = PATH_LOGS / "ckpts"
+            self.PATH_CKPTS.mkdir(exist_ok=True, parents=True)
+            if path == 'default':
+                path_ckpt = self.PATH_CKPTS / f"{self.cfg.full_name}-{self.cfg.num_train_steps}.pkl"
+            elif path == 'lastest':
+                path_ckpt = self.PATH_CKPTS / f"{self.cfg.full_name}-latest.pkl"
+        else:
+            path_ckpt = path
+        torch.save(data, str(path_ckpt))
+        print(f"[INFO] Save {self.cfg.full_name} with train step {self.cfg.num_train_steps} to {path_ckpt}.")
+        return path_ckpt
 
     @classmethod
     def load(cls, path: str | Path, device: str | torch.device):

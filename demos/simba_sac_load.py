@@ -12,7 +12,7 @@ import tyro
 import torch
 from dataclasses import dataclass
 from katarl2.agents import SimbaSAC, SimbaSACConfig
-from katarl2.envs.common.env_cfg import EnvConfig
+from katarl2.envs import BaseEnvConfig
 from katarl2.common.logger import LogConfig, get_tensorboard_writer
 from katarl2.envs.env_maker import make_envs
 from katarl2.common import path_manager
@@ -22,7 +22,7 @@ from pprint import pprint
 @dataclass
 class Args:
     agent: SimbaSACConfig
-    env: EnvConfig
+    env: BaseEnvConfig
     logger: LogConfig
     total_timesteps: int = int(1e6)
     debug: bool = False

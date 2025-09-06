@@ -4,6 +4,7 @@ from typing import Optional
 from katarl2.envs.common.env_cfg import EnvConfig
 from torch.utils.tensorboard import SummaryWriter
 from katarl2.agents.ppo.ppo_cfg import PPOConfig
+from typing import Literal
 
 import torch
 from torch import nn
@@ -42,7 +43,7 @@ class PPO(BaseAgent):
         if env_cfg is not None:
             cfg.batch_size = int(env_cfg.num_envs * cfg.num_steps)
             cfg.minibatch_size = int(cfg.batch_size // cfg.num_minibatches)
-            cfg.num_iterations = cfg.num_env_steps // env_cfg.action_repeat // cfg.batch_size
+            cfg.num_iterations = cfg.total_env_steps // env_cfg.action_repeat // cfg.batch_size
 
         self.obs_space: gym.Space = cfg.obs_space
         self.act_space: gym.Space = cfg.act_space
@@ -127,11 +128,11 @@ class PPO(BaseAgent):
     def learn(self):
         cfg: PPOConfig = self.cfg
         envs, logger = self.envs, self.logger
-        self.env_step = 0
         self.interaction_step = 0
         fixed_start_time = start_time = time.time()
-        last_eval_interaction_step = 0
-        last_log_interaction_step = 0
+        last_log_interaction_step = -1
+        last_eval_interaction_step = -1
+        last_save_interaction_step = -1
         last_verbose_time = 0
 
         """ Training """
@@ -151,7 +152,7 @@ class PPO(BaseAgent):
                 self.optimizer.param_groups[0]["lr"] = lrnow
 
             for step in range(0, cfg.num_steps):
-                self.env_step += cfg.num_envs * self.env_cfg.action_repeat
+                cfg.num_env_steps += cfg.num_envs * self.env_cfg.action_repeat
                 self.interaction_step += 1
 
                 self.obs[step] = next_obs
@@ -263,7 +264,7 @@ class PPO(BaseAgent):
             if self.interaction_step - last_log_interaction_step >= cfg.log_per_interaction_step:
                 last_log_interaction_step = self.interaction_step
                 time_used = time.time() - start_time
-                SPS = int(self.env_step / time_used)
+                SPS = int(cfg.num_env_steps / time_used)
                 logs = {
                     "charts/learning_rate": self.optimizer.param_groups[0]["lr"],
                     "losses/value_loss": v_loss.item(),
@@ -277,7 +278,7 @@ class PPO(BaseAgent):
                     "charts/time_sec": time_used,
                 }
                 for name, value in logs.items():
-                    self.logger.add_scalar(name, value, self.env_step)
+                    self.logger.add_scalar(name, value, cfg.num_env_steps)
                 if cfg.verbose == 1 and time.time() - last_verbose_time > 10:
                     last_verbose_time = time.time()
                     time_left = (cfg.num_iterations - iteration) * cfg.num_steps * cfg.num_envs * self.env_cfg.action_repeat / SPS
@@ -285,31 +286,30 @@ class PPO(BaseAgent):
             
             """ Evaluating """
             if (
-                last_eval_interaction_step == 0 or
+                last_eval_interaction_step == -1 or
                 self.interaction_step - last_eval_interaction_step >= cfg.eval_per_interaction_step or
                 iteration == cfg.num_iterations
             ):
                 last_eval_interaction_step = self.interaction_step
-                eval_time = self.eval(env_step=self.env_step)
+                eval_time = self.eval()
                 start_time += eval_time
+            
+            """ Save Model """
+            if cfg.save_per_interaction_step > 0 and (
+                self.interaction_step - last_save_interaction_step >= cfg.save_per_interaction_step or
+                iteration == cfg.num_iterations
+            ):
+                last_save_interaction_step = self.interaction_step
+                self.save('lastest' if cfg.overwrite_model else 'default')
 
-    def save(self, path: str | Path = 'default'):
+    def save(self, path: Literal['default', 'lastest'] | Path = 'default'):
         to_cpu = lambda data: {k: v.to('cpu') for k, v in data.items()}
         data = {
             'config': self.cfg,
             'env_config': self.env_cfg,
             'agent': to_cpu(self.agent.state_dict()),
         }
-        if path == 'default':
-            PATH_LOGS = path_manager.PATH_LOGS
-            self.PATH_CKPTS = PATH_LOGS / "ckpts"
-            self.PATH_CKPTS.mkdir(exist_ok=True, parents=True)
-
-            path_ckpt = self.PATH_CKPTS / f"{self.cfg.full_name}-{self.cfg.num_train_steps}.pkl"
-        else:
-            path_ckpt = path
-        torch.save(data, str(path_ckpt))
-        print(f"[INFO] Save PPO model-{self.cfg.num_train_steps} to {path_ckpt}.")
+        path_ckpt = self._save(data, path)
         return path_ckpt
 
     @classmethod

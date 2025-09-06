@@ -2,17 +2,19 @@ import numpy as np
 from functools import partial
 from typing import Optional, Any
 from dataclasses import dataclass
-from katarl2.envs import GymAtariEnvConfig, GymMujocoEnvConfig, DMCEnvConfig
+from katarl2.envs import GymAtariEnvConfig, GymMujocoEnvConfig, DMCEnvConfig, EnvpoolAtariEnvConfig
+
+@dataclass
+class PPOEnvpoolAtariEnvConfig(EnvpoolAtariEnvConfig):
+    num_envs: int = 8
 
 @dataclass
 class PPOGymAtariEnvConfig(GymAtariEnvConfig):
     num_envs: int = 8
-    num_eval_envs: int = 32
 
 @dataclass
 class PPOGymMujocoEnvConfig(GymMujocoEnvConfig):
     num_envs: int = 1
-    num_eval_envs: int = 10
 
     normalize_observation: bool = True
     transform_observation: Optional[Any] = partial(np.clip, a_min=-10, a_max=10)
@@ -24,7 +26,6 @@ class PPOGymMujocoEnvConfig(GymMujocoEnvConfig):
 @dataclass
 class PPODMCEnvConfig(DMCEnvConfig):
     num_envs: int = 1
-    num_eval_envs: int = 10
 
     normalize_observation: bool = True
     transform_observation: Optional[Any] = partial(np.clip, a_min=-10, a_max=10)
@@ -36,7 +37,6 @@ class PPODMCEnvConfig(DMCEnvConfig):
 @dataclass
 class SimbaPPOGymMujocoEnvConfig(GymMujocoEnvConfig):
     num_envs: int = 1
-    num_eval_envs: int = 10
 
     rescale_action: bool = True
     normalize_reward: bool = True
@@ -46,7 +46,6 @@ class SimbaPPOGymMujocoEnvConfig(GymMujocoEnvConfig):
 @dataclass
 class SimbaPPODMCEnvConfig(DMCEnvConfig):
     num_envs: int = 1
-    num_eval_envs: int = 10
 
     action_repeat_wrapper: bool = True
     action_repeat: int = 2

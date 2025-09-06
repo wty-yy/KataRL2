@@ -49,11 +49,14 @@ P.S.
 3. 虽然lambda函数无法用pkl打包, 但可以用functools.partial或者返回包装的thunk函数替代lambda函数
 
 
-## v0.4 (20250903 -)
-1. 由于无法保证envpool和gymnasium的实验一致性, 删除了envpoolq全部环境, 最后存在版本为v0.3 9004d097a461996f19365fc3287acbb50c614624
+## v0.4 (20250903 - 20250905)
+1. 重新加入envpool, 忘记给gym加上sticky action导致错误的评判, 现在按照[dreamerv3的标准](https://github.com/danijar/dreamerv3/blob/main/embodied/envs/atari.py)进行Atari环境对齐, PPO中加上帧堆叠功能
+> 之前错误的删除: 无法保证envpool和gymnasium的实验一致性, 删除了envpoolq全部环境, 最后存在版本为v0.3 9004d097a461996f19365fc3287acbb50c614624
 2. 统一max_and_skip为action_repeat, 并加入action_repeat_wrapper来是否用action_repeat_wrppaer或atari_wrappers
 3. 加入对num_train_steps的保存, 用于resume模型后, 继续训练能保存正确的模型名称
 4. 删除单独的SimbaPPO算法, 已完全整合在PPO算法中
+5. 模型的save仅用于生成data数据, 调用使用统一的_save函数对data数据进行存储
+6. 区分total_env_steps和num_env_steps, 前者为总的训练环境步进次数, 后者为当前已走过的环境步数
 
 TODO:
 - [ ] 加入DreamerV3

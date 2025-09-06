@@ -100,6 +100,9 @@ class RunningMeanStd:
             return (obs - mean) / torch.sqrt(var + self.epsilon)
         raise Exception(f"Input should be np.ndarray or torch.Tensor, but get {type(obs)}")
 
+    def __repr__(self) -> str:
+        return f"RunningMeanStd(mean.shape={self.mean.shape}, var.shape={self.var.shape}, count={self.count})"
+
 if __name__ == '__main__':
     # scaler
     rms = RunningMeanStd(shape=())

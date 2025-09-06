@@ -28,7 +28,7 @@ class SACConfig(BaseAgentConfig):
 
     """ Training """
     # Total environment steps
-    num_env_steps: int = int(1e6)
+    total_env_steps: int = int(1e6)
 
     """ hyper-parameters """
     # the replay memory buffer size

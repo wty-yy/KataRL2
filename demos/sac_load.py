@@ -11,7 +11,7 @@ sys.path.append(str(Path(__file__).parents[1]))
 import tyro
 from dataclasses import dataclass
 from katarl2.agents import SAC, SACConfig
-from katarl2.envs.common.env_cfg import EnvConfig
+from katarl2.envs import BaseEnvConfig
 from katarl2.common.logger import LogConfig, get_tensorboard_writer
 from katarl2.envs.env_maker import make_envs
 from katarl2.common import path_manager

@@ -8,10 +8,10 @@ from shimmy import DmControlCompatibilityV0 as DmControltoGymnasium
 from typing import Literal
 from dataclasses import dataclass
 from katarl2.common import path_manager
-from katarl2.envs.common.env_cfg import EnvConfig
+from katarl2.envs import BaseEnvConfig
 
 @dataclass
-class DMCEnvConfig(EnvConfig):
+class DMCEnvConfig(BaseEnvConfig):
     flatten_observation: bool = True
     max_episode_env_steps: int = 1000
     env_type: Literal['dmc'] = 'dmc'
@@ -74,11 +74,6 @@ def make_dmc_env(
 
     return env
 
-def make_dmc_env_from_cfg(cfg: EnvConfig):
-    if cfg.capture_video:
-        PATH_VIDEOS = cfg.path_logs / 'videos'
-    
+def make_dmc_env_from_cfg(cfg: DMCEnvConfig):
     env = make_dmc_env(cfg.env_name, cfg.seed, render=cfg.capture_video)
-    if cfg.capture_video:
-        env = gym.wrappers.RecordVideo(env, str(PATH_VIDEOS))
     return env

@@ -1,5 +1,17 @@
 from dataclasses import dataclass
 
+def apply_fn_dict(d: dict, fn) -> dict:
+    """ 对字典的每个value递归地应用函数fn """
+    new_d = {}
+    if hasattr(d, '__dict__'):
+        d = vars(d)
+    for k, v in d.items():
+        if isinstance(v, dict) or hasattr(v, '__dict__'):
+            new_d[k] = apply_fn_dict(v, fn)
+        else:
+            new_d[k] = fn(v)
+    return new_d
+
 def flatten_dict(d, prefix="") -> dict:
     """ 将dict或tyro解析的配置类, 展平为dict """
     flatten = {}

@@ -21,7 +21,7 @@ class PPODiscreteConfig(BaseAgentConfig):
 
     """ Training / Evaluating """
     # Total environment steps
-    num_env_steps: int = int(4e7)
+    total_env_steps: int = int(4e7)
 
     """ hyper-parameters (each algorithm has diff params, here are some examples) """
     # the learning rate of the optimizer
@@ -76,7 +76,7 @@ class PPOContinuousConfig(PPODiscreteConfig):
     # Network name
     network_name: Literal['CNN+MLP', 'MLP'] = 'MLP'
     # Total environment steps
-    num_env_steps: int = int(1e6)
+    total_env_steps: int = int(1e6)
     # the learning rate of the optimizer
     learning_rate: float = 3e-4
     # the number of steps to run in each environment per policy rollout

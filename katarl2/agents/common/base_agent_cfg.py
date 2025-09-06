@@ -30,21 +30,28 @@ class BaseAgentConfig:
     obs_space: Any = None
     act_space: Any = None
 
-    """ Logger """
-    # Log every n interaction steps
-    log_per_interaction_step: int = 5000
-
     """ Training / Evaluating """
     # Total environment steps
-    num_env_steps: int = int(1e6)
-    # Total agent interaction steps (Don't setup in CLI)
-    num_interaction_steps: Any = None
+    total_env_steps: int = int(1e6)
+
+    ### Tip: total_interaction_steps = num_env_steps / (action_repeat * num_envs) ###
+    # Log every n interaction steps
+    log_per_interaction_step: int = 5000
     # Evaluation in learn() function
     eval_per_interaction_step: int = 25000
+    # Save model every n interaction steps (0 means no save)
+    save_per_interaction_step: int = 100000
     # Total number of evaluation episodes
-    num_eval_episodes: int = 32
-    # Number of steps trained
+    num_eval_episodes: int = 8
+    # Overwrite model checkpoint
+    overwrite_model: bool = True
+
+    # Total agent interaction steps (Don't setup in CLI)
+    num_interaction_steps: Any = None
+    # Number of steps trained (don't setup in CLI)
     num_train_steps: int = 0
+    # Number of environment steps (don't setup in CLI)
+    num_env_steps: int = 0
 
     """ hyper-parameters (each algorithm has diff params, here are some examples) """
     # the replay memory buffer size
