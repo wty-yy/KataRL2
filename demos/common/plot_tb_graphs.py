@@ -13,17 +13,21 @@ Directory layout expected (example):
 ├── sac/
 │   ├── basic_continuous_mlp/
 │   │   └── Hopper-v4__gymnasium/
-│   │       ├── seed_0_0/20250811-234258/tb/events.out.tfevents....
-│   │       ├── seed_1_1/...
-│   │       └── seed_2_2/...
+│   │   │   ├── seed_0_0/20250811-234258/tb/events.out.tfevents....
+│   │   │   ├── seed_1_1/...
+│   │   │   └── seed_2_2/...
+│   │   └── Hopper-v4__envpool/
+│   │        └── ...
 │   └── simba_continuous_mlp/
 │        └── ...
 └── ppo/
      └── ...
 
 Usage:
+  python ./demos/common/plot_tb_graphs.py --avail-algos ppo sac
   python ./demos/common/plot_tb_graphs.py --avail-algos ppo sac --ignore-env-suit-name
-  python ./plot_tb_graphs.py --logdir ./logs --tag charts/episodic_return --out ./logs/plots --points 100 --smooth 0.5 --avail-algos sac
+  python ./demos/common/plot_tb_graphs.py --avail-algos ppo --ignore-env-suit-name --avail-suits envpool --avail-envs Breakout-v5
+  python ./demos/common/plot_tb_graphs.py --logdir ./logs --tag charts/episodic_return --out ./logs/plots --points 100 --smooth 0.5 --avail-algos sac
 
 Notes:
 - Requires `tensorboard` Python package (for EventAccumulator). Install with: pip install tensorboard
@@ -169,6 +173,7 @@ def main():
     parser.add_argument("--dpi", type=int, default=160, help="Figure DPI.")
     parser.add_argument("--avail-algos", nargs='+', default=['sac'], help="List of available algorithms.")
     parser.add_argument("--avail-envs", nargs='+', default=None, help="List of available environments.")
+    parser.add_argument("--avail-suits", nargs='+', default=None, help="List of available environment suites.")
     parser.add_argument("--ignore-env-suit-name", action='store_true', help="Ignore environment suite name (e.g. gymnaisum, dmc, ...).")
     args = parser.parse_args()
 
@@ -190,7 +195,10 @@ def main():
             fam_root = os.path.join(algo_root, fam)
             envs = list_immediate_subdirs(fam_root)
             for env in envs:
-                if args.avail_envs and env not in args.avail_envs:
+                env_id, env_suit = env.split('__')
+                if args.avail_envs and env_id not in args.avail_envs:
+                    continue
+                if args.avail_suits and env_suit not in args.avail_suits:
                     continue
                 env_root = os.path.join(fam_root, env)
                 seed_dirs = [d for d in list_immediate_subdirs(env_root) if SEED_DIR_RE.match(d)]

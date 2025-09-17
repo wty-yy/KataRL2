@@ -125,7 +125,7 @@ class SimbaPPODiscreteConfig(PPODiscreteConfig):
     # the running mean std for observation
     obs_rms: Optional[Any] = None
 
-    optimizer: Literal['adam', 'adamw'] = 'adamw'
-    weight_decay: float = 1e-2
+    # optimizer: Literal['adam', 'adamw'] = 'adamw'
+    # weight_decay: float = 1e-2
 
 PPOConfig = Union[PPODiscreteConfig, PPOContinuousConfig, SimbaPPOContinuousConfig, SimbaPPODiscreteConfig]

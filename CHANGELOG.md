@@ -58,5 +58,3 @@ P.S.
 5. 模型的save仅用于生成data数据, 调用使用统一的_save函数对data数据进行存储
 6. 区分total_env_steps和num_env_steps, 前者为总的训练环境步进次数, 后者为当前已走过的环境步数
 
-TODO:
-- [ ] 加入DreamerV3

@@ -3,8 +3,8 @@ BasicSAC (from cleanrl)
 启动脚本: bash ./benchmarks/sac_run_experiments.py
 查看可用参数: python ./demos/sac.py --help
 单独启动训练 (子命令选择 {env:gym, env:dmc}):
-python ./demos/sac.py env:gym --env.env-name Hopper-v4 --agent.num-env-steps 100000 --agent.verbose 2 --debug
-python ./demos/sac.py env:dmc --env.env-name walker-walk --agent.num-env-steps 100000 --agent.verbose 2 --debug
+python ./demos/sac.py env:gym --env.env-name Hopper-v4 --agent.total-env-steps 100000 --agent.verbose 2 --debug
+python ./demos/sac.py env:dmc --env.env-name walker-walk --agent.total-env-steps 100000 --agent.verbose 2 --debug
 """
 import sys
 from pathlib import Path

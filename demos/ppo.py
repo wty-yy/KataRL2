@@ -3,12 +3,14 @@ PPO (from cleanrl)
 启动脚本: bash ./benchmarks/ppo_run_experiments.py
 查看可用参数: python ./demos/ppo.py --help
 单独启动训练 (子命令选择 {agent:disc, agent:cont} {env:envpool-atari, env:gym-atari, env:gym-mujoco, env:dmc, env:gym-mujoco-simba, env:dmc-simba}):
-python ./demos/ppo.py agent:disc env:envpool-atari --env.env-name Breakout-v5 --agent.num-env-steps 10000 --agent.verbose 2 --debug
-python ./demos/ppo.py agent:disc env:gym-atari --env.env-name Breakout-v5 --agent.num-env-steps 10000 --agent.verbose 2 --debug
-python ./demos/ppo.py agent:cont env:gym-mujoco --env.env-name Hopper-v4 --agent.num-env-steps 10000 --agent.verbose 2 --debug
-python ./demos/ppo.py agent:cont env:dmc --env.env-name walker-walk --agent.num-env-steps 10000 --agent.verbose 2 --debug
-python ./demos/ppo.py agent:cont-simba env:gym-mujoco-simba --env.env-name Hopper-v4 --agent.num-env-steps 10000 --agent.verbose 2 --debug
-python ./demos/ppo.py agent:cont-simba env:dmc-simba --env.env-name walker-walk --agent.num-env-steps 10000 --agent.verbose 2 --debug
+python ./demos/ppo.py agent:disc env:envpool-atari --env.env-name Pong-v5 --agent.total-env-steps 10000 --agent.verbose 2 --debug
+python ./demos/ppo.py agent:disc env:gym-atari --env.env-name Pong-v5 --agent.total-env-steps 10000 --agent.verbose 2 --debug
+python ./demos/ppo.py agent:disc-simba env:envpool-atari-simba --env.env-name Pong-v5 --agent.total-env-steps 10000 --agent.verbose 2 --debug
+python ./demos/ppo.py agent:disc-simba env:gym-atari-simba --env.env-name Pong-v5 --agent.total-env-steps 10000 --agent.verbose 2 --debug
+python ./demos/ppo.py agent:cont env:gym-mujoco --env.env-name Hopper-v4 --agent.total-env-steps 10000 --agent.verbose 2 --debug
+python ./demos/ppo.py agent:cont env:dmc --env.env-name walker-walk --agent.total-env-steps 10000 --agent.verbose 2 --debug
+python ./demos/ppo.py agent:cont-simba env:gym-mujoco-simba --env.env-name Hopper-v4 --agent.total-env-steps 10000 --agent.verbose 2 --debug
+python ./demos/ppo.py agent:cont-simba env:dmc-simba --env.env-name walker-walk --agent.total-env-steps 10000 --agent.verbose 2 --debug
 """
 import sys
 from pathlib import Path

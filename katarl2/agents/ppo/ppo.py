@@ -116,8 +116,8 @@ class PPO(BaseAgent):
     
     def try_rms(self, obs, update=False, normalize=False):
         if self.rms is not None:
-            if update: self.rms.update(obs)
-            if normalize: obs = self.rms.normalize(obs)
+            if update: self.rms.update(obs / 255)
+            if normalize: obs = self.rms.normalize(obs / 255)
         return obs
 
     def predict(self, obs: np.ndarray):

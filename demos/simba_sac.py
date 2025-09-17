@@ -3,8 +3,8 @@ SimbaSAC (from simba)
 启动脚本: bash ./benchmarks/simba_sac_run_experiments.py
 查看可用参数: python ./demos/simba_sac.py --help
 单独启动训练 (子命令选择 {env:gym, env:dmc}):
-python ./demos/simba_sac.py env:gym --env.env-name Hopper-v4 --agent.num-env-steps 100000 --agent.verbose 2 --debug
-python ./demos/simba_sac.py env:dmc --env.env-name walker-walk --agent.num-env-steps 100000 --agent.verbose 2 --agent.device cuda:1 --debug
+python ./demos/simba_sac.py env:gym --env.env-name Hopper-v4 --agent.total-env-steps 100000 --agent.verbose 2 --debug
+python ./demos/simba_sac.py env:dmc --env.env-name walker-walk --agent.total-env-steps 100000 --agent.verbose 2 --agent.device cuda:1 --debug
 """
 import sys
 from pathlib import Path

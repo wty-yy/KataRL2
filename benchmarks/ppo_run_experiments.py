@@ -18,26 +18,26 @@ ppo_type2suffix = {  # suffix for action_type and env_subcommand
 
 # 配置任务
 ppo_type: Literal['basic', 'simba'] = 'basic'
-atari_suit: Literal['gym', 'envpool'] = 'gym'
+atari_suit: Literal['gym', 'envpool'] = 'envpool'
 tasks = [
     # (action_type, env_subcommand, env_name, cuda_list, seed_list)
     # Discrete Gymnasium
-    ("agent:disc", f"env:{atari_suit}-atari", 'Assault-v5',       [1, 1, 1], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'Asterix-v5',       [1, 1, 1], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'BeamRider-v5',     [3, 3, 3], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'Boxing-v5',        [3, 3, 3], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'Breakout-v5',      [5, 5, 5], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'Enduro-v5',        [5, 5, 5], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'Frostbite-v5',     [5, 5, 5], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'Hero-v5',          [5, 5, 5], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'MsPacman-v5',      [6, 6, 6], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'Phoenix-v5',       [6, 6, 6], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'Pong-v5',          [6, 6, 6], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'Qbert-v5',         [6, 6, 6], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'Seaquest-v5',      [7, 7, 7], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'SpaceInvaders-v5', [7, 7, 7], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'UpNDown-v5',       [0, 1, 2], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'WizardOfWor-v5',   [7, 7, 7], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'Assault-v5',       [0, 0, 0], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'Asterix-v5',       [0, 0, 0], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'BeamRider-v5',     [0, 0, 0], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'Boxing-v5',        [1, 1, 1], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'Breakout-v5',      [1, 1, 1], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'Enduro-v5',        [1, 1, 1], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'Frostbite-v5',     [2, 2, 2], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'Hero-v5',          [2, 2, 2], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'MsPacman-v5',      [2, 2, 2], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'Phoenix-v5',       [3, 3, 3], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'Pong-v5',          [3, 3, 3], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'Qbert-v5',         [3, 3, 3], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'Seaquest-v5',      [0, 0, 0], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'SpaceInvaders-v5', [1, 1, 1], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'UpNDown-v5',       [2, 2, 2], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'WizardOfWor-v5',   [3, 3, 3], [0, 1, 2]),
     # Continuous
     ("agent:cont", "env:gym-mujoco", "Ant-v4",              [6, 6, 6], [0, 1, 2]),
     ("agent:cont", "env:gym-mujoco", "HalfCheetah-v4",      [0, 0, 0], [0, 1, 2]),
