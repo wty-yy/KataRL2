@@ -31,6 +31,8 @@ class BaseEnvConfig:
     env_type: str
     # Environment name
     env_name: str
+    # Max episode environment steps
+    max_episode_env_steps: int
     # Number of parallel environments (Train)
     num_envs: int = 1
     # Number of parallel environments (Evaluate)
@@ -41,8 +43,6 @@ class BaseEnvConfig:
     seed: int = 42
 
     """ Wrappers Parameters (Update by Algo) """
-    # Max episode environment steps (optional)
-    max_episode_env_steps: Optional[int] = None
     """ Observation related """
     # Flatten observation (deal with cm_control's Dict observation space)
     flatten_observation: bool = False

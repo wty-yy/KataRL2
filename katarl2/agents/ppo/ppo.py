@@ -134,6 +134,7 @@ class PPO(BaseAgent):
         last_eval_interaction_step = -1
         last_save_interaction_step = -1
         last_verbose_time = 0
+        train_episodic_returns, train_episodic_lens = [], []  # for logging during training
 
         """ Training """
         next_obs, _ = envs.reset()
@@ -171,6 +172,12 @@ class PPO(BaseAgent):
                 next_done = np.logical_or(terminations, truncations)
                 self.rewards[step] = torch.tensor(reward).to(self.device).view(-1)
                 next_obs, next_done = torch.Tensor(next_obs).to(self.device), torch.Tensor(next_done).to(self.device)
+
+                if "final_info" in infos and 'episode' in infos['final_info']:
+                    final_info = infos['final_info']
+                    mask = final_info['_episode']
+                    train_episodic_returns.extend(final_info['episode']['r'][mask].tolist())
+                    train_episodic_lens.extend(final_info['episode']['l'][mask].tolist())
 
             # bootstrap value if not done
             with torch.no_grad():
@@ -277,6 +284,12 @@ class PPO(BaseAgent):
                     "charts/SPS": SPS,
                     "charts/time_sec": time_used,
                 }
+                if len(train_episodic_returns) > 0:
+                    logs.update({
+                        "charts/train_episodic_return": np.mean(train_episodic_returns),
+                        "charts/train_episodic_length": np.mean(train_episodic_lens)
+                    })
+                    train_episodic_returns, train_episodic_lens = [], []
                 for name, value in logs.items():
                     self.logger.add_scalar(name, value, cfg.num_env_steps)
                 if cfg.verbose == 1 and time.time() - last_verbose_time > 10:

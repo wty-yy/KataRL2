@@ -19,12 +19,6 @@ class SACConfig(BaseAgentConfig):
     verbose: int = 0
     # Pytorch model device, cpu, cuda, cuda:0, cuda:1, ...
     device: str = 'cuda'
-    
-    """ Environment (setup after envs created) """
-    # Don't setup these parameters in CLI
-    num_envs: Any = None
-    obs_space: Any = None
-    act_space: Any = None
 
     """ Training """
     # Total environment steps

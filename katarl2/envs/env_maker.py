@@ -18,7 +18,22 @@ from katarl2.envs.wrappers import (
 )
 from katarl2.common import path_manager
 
-def make_envs(cfg: EnvConfig) -> tuple[gym.vector.SyncVectorEnv, gym.vector.SyncVectorEnv]:
+def make_envs(
+        cfg: EnvConfig,
+        create_train=True,
+        create_eval=True,
+        customed_env_fn=None
+    ) -> tuple[gym.vector.SyncVectorEnv, gym.vector.SyncVectorEnv]:
+    """
+    Args:
+        cfg: EnvConfig, 环境配置文件
+        create_train: bool, 是否创建训练环境
+        create_eval: bool, 是否创建评估环境
+        customed_env_fn: function, 可选自定义环境函数, 需要传入EnvConfig并返回gym.Env实例
+    Returns:
+        envs: SyncVectorEnv, 训练环境
+        eval_envs: SyncVectorEnv, 评估环境
+    """
     # Update logs path
     if path_manager._PATH_LOGS:
         cfg.path_logs = path_manager.PATH_LOGS
@@ -31,6 +46,8 @@ def make_envs(cfg: EnvConfig) -> tuple[gym.vector.SyncVectorEnv, gym.vector.Sync
         env_fn = make_dmc_env_from_cfg
     elif cfg.env_type == 'envpool':
         envs_fn = make_envpool_envs_from_cfg
+    elif customed_env_fn is not None:
+        env_fn = customed_env_fn
     else:
         raise ValueError(f"Unsupported environment type: {cfg.env_type}.")
 
@@ -108,12 +125,35 @@ def make_envs(cfg: EnvConfig) -> tuple[gym.vector.SyncVectorEnv, gym.vector.Sync
         envs = gym.vector.SyncVectorEnv(envs_list, autoreset_mode=AutoresetMode.SAME_STEP)
         return envs
     
+    train_envs, eval_envs = None, None
     if envs_fn is not None:
-        train_envs = envs_fn(cfg, train=True)
-        eval_envs = envs_fn(cfg, train=False)
+        if create_train:
+            train_envs = envs_fn(cfg, train=True)
+        if create_eval:
+            eval_envs = envs_fn(cfg, train=False)
     else:
-        train_envs = make_venv(cfg.num_envs, train=True)
-        eval_envs = make_venv(cfg.num_eval_envs, train=False)
+        if create_train:
+            train_envs = make_venv(cfg.num_envs, train=True)
+        if create_eval:
+            eval_envs = make_venv(cfg.num_eval_envs, train=False)
 
     return train_envs, eval_envs
     
+def make_customed_envs(
+        env_cls: gym.Env,
+        cfg: EnvConfig,
+        create_train: bool = True,
+        create_eval: bool = True
+    ) -> tuple[gym.vector.SyncVectorEnv, gym.vector.SyncVectorEnv]:
+    """
+    Args:
+        env_cls: gym.Env, 自定义环境类, 需要无参数实例化
+        cfg: EnvConfig, 环境配置文件
+        create_train: bool, 是否创建训练环境
+        create_eval: bool, 是否创建评估环境
+    Returns:
+        envs: SyncVectorEnv, 训练环境
+        eval_envs: SyncVectorEnv, 评估环境
+    """
+    customed_env_fn = lambda cfg: env_cls()
+    return make_envs(cfg, create_train=create_train, create_eval=create_eval, customed_env_fn=customed_env_fn)

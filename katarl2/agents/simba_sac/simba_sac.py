@@ -116,6 +116,7 @@ class SimbaSAC(BaseAgent):
         last_log_interaction_step = -1
         last_eval_interaction_step = -1
         last_save_interaction_step = -1
+        train_episodic_returns, train_episodic_lens = [], []  # for logging during training
 
         # start the game
         fixed_start_time = start_time = time.time()
@@ -145,6 +146,11 @@ class SimbaSAC(BaseAgent):
                 if terminations[idx] or truncations[idx]:
                     self.rms.update(infos['final_obs'][idx])
                     real_next_obs[idx] = infos["final_obs"][idx]
+            if "final_info" in infos and 'episode' in infos['final_info']:
+                final_info = infos['final_info']
+                mask = final_info['_episode']
+                train_episodic_returns.extend(final_info['episode']['r'][mask].tolist())
+                train_episodic_lens.extend(final_info['episode']['l'][mask].tolist())
             self.rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
 
             # CRUCIAL step easy to overlook
@@ -245,6 +251,12 @@ class SimbaSAC(BaseAgent):
                         "charts/SPS": SPS,
                         "charts/time_sec": time_used,
                     }
+                    if len(train_episodic_returns) > 0:
+                        logs.update({
+                            "charts/train_episodic_return": np.mean(train_episodic_returns),
+                            "charts/train_episodic_length": np.mean(train_episodic_lens)
+                        })
+                        train_episodic_returns, train_episodic_lens = [], []
                     if cfg.use_cdq:
                         logs.update({
                             "losses/qf2_values": qf2_a_values.mean().item(),
