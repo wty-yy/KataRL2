@@ -80,5 +80,53 @@ pip install -r requirements/requirements_full.txt
 1. `mujoco.FatalError: an OpenGL platform library has not been loaded into this process, this most likely means that a valid OpenGL context has not been created before mjr_makeContext was called`, 设置环境变量`conda env config vars set MUJOCO_GL=egl`, 重启`conda`环境即可
 
 ## 完成的实验
-### SAC vs PPO vs Simba Version (Continuous)
-![sac_vs_ppo_vs_simba](./assets/sac_vs_ppo_vs_simba.png)
+以下图片均由[plot_tb_graphs.py](./demos/common/plot_tb_graphs.py)和[plot_tb_graphs_compare_env_suits](./demos/common/plot_tb_graphs_compare_env_suits.py)完成, 绘制命令请见[plot_commands.md](./assets/figures/plot_commands.md)
+### PPO vs Simba
+<details>
+    <summary>atari</summary>
+    <img src="./assets/figures/ppo/ppo_vs_simba_atari.png" width="70%"/>
+    <img src="./assets/figures/ppo/ppo_vs_simba_atari_summary.png" width="25%"/>
+</details>
+<details>
+    <summary>gym mujoco</summary>
+    <img src="./assets/figures/ppo/ppo_vs_simba_gym_mujoco.png" width="70%"/>
+    <img src="./assets/figures/ppo/ppo_vs_simba_gym_mujoco_summary.png" width="25%"/>
+</details>
+<details>
+    <summary>dmc hard</summary>
+    <img src="./assets/figures/ppo/ppo_vs_simba_dmc_hard.png" width="70%"/>
+    <img src="./assets/figures/ppo/ppo_vs_simba_dmc_hard_summary.png" width="25%"/>
+</details>
+<details>
+    <summary>atari envpool vs gymnasium</summary>
+    <img src="./assets/figures/ppo/atari_envpool_vs_gymnasium.png"/>
+</details>
+
+### SAC vs Simba
+<details>
+    <summary>gym mujoco</summary>
+    <img src="./assets/figures/sac_simba/sac_vs_simba_gym_mujoco.png" width="70%"/>
+    <img src="./assets/figures/sac_simba/sac_vs_simba_gym_mujoco_summary.png" width="25%"/>
+</details>
+<details>
+    <summary>dmc easy</summary>
+    <img src="./assets/figures/sac_simba/sac_vs_simba_dmc_easy.png" width="70%"/>
+    <img src="./assets/figures/sac_simba/sac_vs_simba_dmc_easy_summary.png" width="25%"/>
+</details>
+<details>
+    <summary>dmc hard</summary>
+    <img src="./assets/figures/sac_simba/simba_ablation_dmc_hard.png" width="70%"/>
+    <img src="./assets/figures/sac_simba/simba_ablation_dmc_hard_summary.png" width="25%"/>
+</details>
+
+### SAC vs PPO vs Simba
+<details>
+    <summary>gym mujoco</summary>
+    <img src="./assets/figures/sac_ppo_simba/sac_ppo_simba_gym_mujoco.png" width="70%"/>
+    <img src="./assets/figures/sac_ppo_simba/sac_ppo_simba_gym_mujoco_summary.png" width="25%"/>
+</details>
+<details>
+    <summary>dmc hard</summary>
+    <img src="./assets/figures/sac_ppo_simba/sac_ppo_simba_gym_dmc_hard.png" width="70%"/>
+    <img src="./assets/figures/sac_ppo_simba/sac_ppo_simba_gym_dmc_hard_summary.png" width="25%"/>
+</details>

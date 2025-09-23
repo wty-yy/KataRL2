@@ -58,6 +58,7 @@ P.S.
 5. 模型的save仅用于生成data数据, 调用使用统一的_save函数对data数据进行存储
 6. 区分total_env_steps和num_env_steps, 前者为总的训练环境步进次数, 后者为当前已走过的环境步数
 
-## v0.5 (20250922 - )
+## v0.5 (20250922 - 20250923)
 1. [demos/customed](demos/customed)中加入自定义环境测试, 用于测试PPO, SAC算法, 测试不同的obs, reward设计对算法的影响
 2. 对ppo, sac, simba sac加入训练中的return记录
+3. 优化plot_tb_graphs效果, 重新对所有消融实验进行绘图并展示

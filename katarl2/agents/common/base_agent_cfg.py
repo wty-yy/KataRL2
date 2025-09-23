@@ -18,7 +18,7 @@ class BaseAgentConfig:
     # Deterministic for cudnn (Maybe slow down)
     deterministic: bool = False
     # Output train/eval details, level 0,1,2, message from low to high
-    verbose: int = 0
+    verbose: int = 2
     # Pytorch model device, cpu, cuda, cuda:0, cuda:1, ...
     device: str = 'cuda'
     # Full name (used for logging and saving, don't setup in CLI)
@@ -77,4 +77,9 @@ def get_full_policy_name(cfg: BaseAgentConfig) -> str:
             name += f'_{cfg.optimizer}'
         if cfg.weight_decay != 0.0:
             name += '_WD'
+    if cfg.algo_name.lower() == 'sac' and cfg.policy_name.lower() == 'simba':
+        if not cfg.use_rsnorm:
+            name += '_noRS'
+        if not cfg.use_simba_network:
+            name += '_SACNet'
     return name

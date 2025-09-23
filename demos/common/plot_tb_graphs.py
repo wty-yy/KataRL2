@@ -8,6 +8,8 @@ This version is styled to be similar to DreamerV3 paper plots, featuring square-
 subplots, larger fonts for publication, and a unified legend at the bottom. It uses a
 robust layout method (tight_layout with a rect) to ensure proper spacing and prevent overlap.
 
+A summary plot can be added to compare normalized performance across all environments.
+
 Directory layout expected (example):
 ./logs/
 ├── sac/
@@ -23,11 +25,12 @@ Directory layout expected (example):
 └── ppo/
      └── ...
 
-Usage:
-  python ./demos/common/plot_tb_graphs.py --avail-algos ppo sac
-  python ./demos/common/plot_tb_graphs.py --avail-algos ppo sac --ignore-env-suit-name
-  python ./demos/common/plot_tb_graphs.py --avail-algos ppo --ignore-env-suit-name --avail-suits envpool --avail-envs Breakout-v5
-  python ./demos/common/plot_tb_graphs.py --logdir ./logs --tag charts/episodic_return --out ./logs/plots --points 100 --smooth 0.5 --avail-algos sac
+Usage: (details see assets/figures/plot_commands.md)
+python ./demos/common/plot_tb_graphs.py --avail-algos ppo sac
+python ./demos/common/plot_tb_graphs.py --avail-algos ppo sac --ignore-env-suit-name
+python ./demos/common/plot_tb_graphs.py --avail-algos ppo --ignore-env-suit-name --avail-suits envpool --avail-envs Breakout-v5
+
+python ./demos/common/plot_tb_graphs.py --logdir ./logs --tag charts/episodic_return --out ./logs/plots --points 100 --smooth 0.5 --avail-algos sac
 
 Notes:
 - Requires `tensorboard` Python package (for EventAccumulator). Install with: pip install tensorboard
@@ -56,7 +59,7 @@ except Exception as e:
         f"Original error: {e}"
     )
 
-SEED_DIR_RE = re.compile(r"^seed_(\d+)_\d+$")
+SEED_DIR_RE = re.compile(r"^(seed_\d+_\d+)$")
 
 @dataclass
 class ScalarSeries:
@@ -132,7 +135,8 @@ def ewma_smooth(y: np.ndarray, alpha: float) -> np.ndarray:
         s[i] = alpha * y[i] + (1 - alpha) * s[i-1]
     return s
 
-def aggregate_across_seeds(series_list: List[ScalarSeries], num_points: int, smooth_alpha: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def aggregate_series(series_list: List[ScalarSeries], num_points: int, smooth_alpha: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Aggregates a list of ScalarSeries into a mean and std dev curve on a common grid."""
     if not series_list:
         return np.array([]), np.array([]), np.array([])
 
@@ -152,7 +156,8 @@ def aggregate_across_seeds(series_list: List[ScalarSeries], num_points: int, smo
         if len(s.steps) < 2:
             continue
         vals = np.interp(grid, s.steps, s.values)
-        vals = ewma_smooth(vals, smooth_alpha)
+        if smooth_alpha > 0:
+            vals = ewma_smooth(vals, smooth_alpha)
         aligned.append(vals)
 
     if not aligned:
@@ -172,9 +177,12 @@ def main():
     parser.add_argument("--smooth", type=float, default=0.5, help="EWMA smoothing factor in [0,1). 0 disables.")
     parser.add_argument("--dpi", type=int, default=160, help="Figure DPI.")
     parser.add_argument("--avail-algos", nargs='+', default=['sac'], help="List of available algorithms.")
+    parser.add_argument("--avail-family-algos", nargs='+', default=None, help="List of available algorithm families (subfolders).")
     parser.add_argument("--avail-envs", nargs='+', default=None, help="List of available environments.")
     parser.add_argument("--avail-suits", nargs='+', default=None, help="List of available environment suites.")
     parser.add_argument("--ignore-env-suit-name", action='store_true', help="Ignore environment suite name (e.g. gymnaisum, dmc, ...).")
+    parser.add_argument("--plot-summary", action='store_true', help="Also plot a summary figure with all envs.")
+    parser.add_argument("--title", type=str, default=None, help="Optional figure title.")
     args = parser.parse_args()
 
     os.makedirs(args.out, exist_ok=True)
@@ -185,13 +193,18 @@ def main():
         print(f"[ERROR] No algorithm folders matching --avail-algos under {args.logdir}.")
         return
 
+    # Data structure for overview plot: env -> algo -> [series_per_seed]
     env_to_algo_series: Dict[str, Dict[str, List[ScalarSeries]]] = {}
-    env_algo_fam_paths = []
+    # Data structure for summary plot: seed -> algo -> [series_per_env]
+    seed_to_algo_series: Dict[str, Dict[str, List[ScalarSeries]]] = {}
 
+    env_algo_fam_paths = []
     for algo in algos:
         algo_root = os.path.join(args.logdir, algo)
         families = list_immediate_subdirs(algo_root)
         for fam in families:
+            if args.avail_family_algos and fam not in args.avail_family_algos:
+                continue
             fam_root = os.path.join(algo_root, fam)
             envs = list_immediate_subdirs(fam_root)
             for env in envs:
@@ -204,10 +217,10 @@ def main():
                 seed_dirs = [d for d in list_immediate_subdirs(env_root) if SEED_DIR_RE.match(d)]
                 for seed_dir in seed_dirs:
                     seed_path = os.path.join(env_root, seed_dir)
-                    env_algo_fam_paths.append([env, algo, fam, seed_path])
+                    env_algo_fam_paths.append([env, algo, fam, seed_dir, seed_path])
     
     print("Scanning directories and loading data...")
-    for env, algo, fam, seed_path in tqdm(env_algo_fam_paths):
+    for env, algo, fam, seed_dir, seed_path in tqdm(env_algo_fam_paths):
         ts_dir = pick_latest_timestamp_dir(seed_path)
         if ts_dir is None: continue
         tb_dir = os.path.join(ts_dir, "tb")
@@ -218,101 +231,122 @@ def main():
         
         algo_label = f"{algo}_{fam}"
         env_to_algo_series.setdefault(env, {}).setdefault(algo_label, []).append(series)
+        if args.plot_summary:
+            seed_to_algo_series.setdefault(seed_dir, {}).setdefault(algo_label, []).append(series)
 
     if not env_to_algo_series:
         print("[ERROR] No data found. Check your paths and arguments.")
         return
 
-    # --- 开始绘图 ---
-
     all_algos_labels = sorted(list(set(
         algo for algo_map in env_to_algo_series.values() for algo in algo_map.keys()
     )))
+
+    # --- Plotting settings ---
     colors = plt.cm.tab10.colors
     color_map = {algo: colors[i % len(colors)] for i, algo in enumerate(all_algos_labels)}
-
     plt.rcParams.update({
-        'font.size': 14,
-        'axes.titlesize': 20 if args.ignore_env_suit_name else 16,
-        'axes.labelsize': 14,
-        'xtick.labelsize': 12,
-        'ytick.labelsize': 12,
-        'legend.fontsize': 16,
-        'lines.linewidth': 4.0,
-        'grid.linewidth': 0.5,
-        'grid.linestyle': '--',
-        'grid.alpha': 0.6,
+        'font.size': 14, 'axes.titlesize': 20 if args.ignore_env_suit_name else 16,
+        'axes.labelsize': 14, 'xtick.labelsize': 12, 'ytick.labelsize': 12,
+        'legend.fontsize': 16, 'lines.linewidth': 4.0, 'grid.linewidth': 0.5,
+        'grid.linestyle': '--', 'grid.alpha': 0.6, 'figure.titlesize': 22,
     })
 
+    # --- Generate and save the main overview figure (per-environment) ---
     env_list = sorted(env_to_algo_series.keys())
     n_envs = len(env_list)
-    if n_envs == 0:
-        print("No environments with data to plot.")
-        return
+    if n_envs > 0:
+        ncols = min(n_envs, 4)
+        nrows = math.ceil(n_envs / ncols)
+        fig, axes = plt.subplots(nrows, ncols, figsize=(4 * ncols, 4 * nrows), dpi=args.dpi, squeeze=False, sharex=True, sharey=False)
+        axes = axes.flatten()
+
+        print("\nGenerating overview figure (per-environment performance)...")
+        for i, env in enumerate(env_list):
+            ax = axes[i]
+            algo_map = env_to_algo_series[env]
+            for algo, series_list in sorted(algo_map.items()):
+                grid, mean, std = aggregate_series(series_list, args.points, args.smooth)
+                if grid.size > 0:
+                    ax.plot(grid, mean, label=algo, color=color_map[algo])
+                    ax.fill_between(grid, mean - std, mean + std, alpha=0.2, color=color_map[algo], linewidth=0)
+            
+            env_title = env.split('__')[0] if args.ignore_env_suit_name else env
+            ax.set_title(env_title)
+            ax.grid(True)
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+            ax.xaxis.set_major_formatter(mticker.FuncFormatter(human_readable_formatter))
+            ax.yaxis.set_major_formatter(mticker.FuncFormatter(human_readable_formatter))
+            if i % ncols == 0: ax.set_ylabel("Episodic Return")
+            if (i // ncols) == nrows - 1:
+                ax.set_xlabel("Env Step")
+                ax.tick_params(axis='x', rotation=30)
+
+        for i in range(n_envs, len(axes)): axes[i].set_visible(False)
+        all_algos_abbr_labels = [re.sub(r'(_continuous|_discrete)', '', algo) for algo in all_algos_labels]
+        legend_handles = [plt.Line2D([0], [0], color=color_map[algo], lw=3, label=abbr_algo) for algo, abbr_algo in zip(all_algos_labels, all_algos_abbr_labels)]
+        fig.legend(handles=legend_handles, loc='lower center', bbox_to_anchor=(0.5, 0.0), ncol=min(len(all_algos_labels), 4), frameon=False)
+        if args.title:
+            fig.suptitle(args.title)
+        fig.tight_layout(rect=[0.0, 0.05, 1, 1], w_pad=0.8, h_pad=1.5)
+
+        overview_path = os.path.join(args.out, "all_envs_overview.png")
+        plt.savefig(overview_path)
+        plt.close(fig)
+        print(f"[OK] Saved overview figure: {overview_path}")
+    else:
+        print("No environments with data to plot for the main overview.")
+
+
+    # --- Generate and save the summary figure (new logic) ---
+    if args.plot_summary and seed_to_algo_series:
+        print("\nGenerating summary figure (new logic)...")
+        # Step 1: For each algo, create a list of per-seed summary curves
+        algo_to_seed_summary_series: Dict[str, List[ScalarSeries]] = {algo: [] for algo in all_algos_labels}
+        print("Step 1/2: Averaging across environments for each seed...")
+        for seed_id, algo_map in tqdm(seed_to_algo_series.items()):
+            for algo, env_curves in algo_map.items():
+                # Aggregate all environment curves for this specific seed and algo
+                grid, mean, _ = aggregate_series(env_curves, args.points, args.smooth)
+                if grid.size > 0:
+                    # This series represents the average performance of one seed across all envs
+                    seed_summary_series = ScalarSeries(steps=grid, values=mean)
+                    algo_to_seed_summary_series[algo].append(seed_summary_series)
         
-    ncols = min(n_envs, 4)
-    nrows = math.ceil(n_envs / ncols)
-
-    fig_width = 4 * ncols
-    fig_height = 4 * nrows
-    
-    fig, axes = plt.subplots(
-        nrows, ncols, 
-        figsize=(fig_width, fig_height), 
-        dpi=args.dpi, 
-        squeeze=False,
-        sharex=True, 
-        sharey=False
-    )
-    axes = axes.flatten()
-
-    print("\nGenerating overview figure...")
-    for i, env in enumerate(env_list):
-        ax = axes[i]
-        algo_map = env_to_algo_series[env]
+        # Step 2: Aggregate the per-seed summary curves to get a final mean and std
+        print("Step 2/2: Aggregating summary curves across all seeds...")
+        fig_summary, ax_summary = plt.subplots(figsize=(6, 6), dpi=args.dpi)
         
-        for algo, series_list in sorted(algo_map.items()):
-            grid, mean, std = aggregate_across_seeds(series_list, args.points, args.smooth)
-            if grid.size > 0:
-                ax.plot(grid, mean, label=algo, color=color_map[algo])
-                ax.fill_between(grid, mean - std, mean + std, alpha=0.2, color=color_map[algo], linewidth=0)
+        for algo, seed_summary_list in tqdm(algo_to_seed_summary_series.items()):
+            if not seed_summary_list: continue
+            
+            # Aggregate the summary curves from all seeds for the final plot
+            # No additional smoothing is applied here (smooth_alpha=0.0)
+            final_grid, final_mean, final_std = aggregate_series(seed_summary_list, args.points, smooth_alpha=0.0)
+            
+            if final_grid.size > 0:
+                ax_summary.plot(final_grid, final_mean, label=algo, color=color_map[algo])
+                ax_summary.fill_between(final_grid, final_mean - final_std, final_mean + final_std,
+                                        alpha=0.2, color=color_map[algo], linewidth=0)
 
-        env_title = env.split('__')[0] if args.ignore_env_suit_name else env
-        ax.set_title(env_title)
-        ax.grid(True)
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        
-        ax.xaxis.set_major_formatter(mticker.FuncFormatter(human_readable_formatter))
-        ax.yaxis.set_major_formatter(mticker.FuncFormatter(human_readable_formatter))
-        
-        col = i % ncols
-        if col == 0:
-            ax.set_ylabel("Episodic Return")
-        
-        if i + ncols >= n_envs:
-            ax.set_xlabel("Env Step")
-            ax.tick_params(axis='x', labelbottom=True)
+        ax_summary.set_title("Overall Performance Summary" if args.title is None else args.title)
+        ax_summary.set_ylabel("Mean Episodic Return (across all envs)")
+        ax_summary.set_xlabel("Aligned Steps")
+        ax_summary.grid(True)
+        ax_summary.spines['top'].set_visible(False)
+        ax_summary.spines['right'].set_visible(False)
+        ax_summary.xaxis.set_major_formatter(mticker.FuncFormatter(human_readable_formatter))
+        ax_summary.yaxis.set_major_formatter(mticker.FuncFormatter(human_readable_formatter))
+        # ax_summary.legend(fontsize=12)
+        legend_handles = [plt.Line2D([0], [0], color=color_map[algo], lw=3, label=abbr_algo) for algo, abbr_algo in zip(all_algos_labels, all_algos_abbr_labels)]
+        ax_summary.legend(handles=legend_handles)
 
-    for i in range(n_envs, len(axes)):
-        axes[i].set_visible(False)
-
-    legend_handles = [plt.Line2D([0], [0], color=color_map[algo], lw=3, label=algo) 
-                      for algo in all_algos_labels]
-    
-    legend = fig.legend(handles=legend_handles, 
-                        loc='lower center',
-                        bbox_to_anchor=(0.5, 0.01),
-                        ncol=min(len(all_algos_labels), 4),
-                        frameon=False)
-
-    # rect表示图形的边界比例，格式为[left, bottom, right, top], w_pad, h_pad为子图之间的间距
-    fig.tight_layout(rect=[0, 0.05, 1, 1], w_pad=0.5, h_pad=1.0)
-
-    overview_path = os.path.join(args.out, "all_envs_overview.png")
-    plt.savefig(overview_path)
-    plt.close(fig)
-    print(f"[OK] Saved overview figure: {overview_path}")
+        fig_summary.tight_layout()
+        summary_path = os.path.join(args.out, "all_envs_summary.png")
+        fig_summary.savefig(summary_path)
+        plt.close(fig_summary)
+        print(f"[OK] Saved summary figure with new logic: {summary_path}")
 
 
 if __name__ == "__main__":

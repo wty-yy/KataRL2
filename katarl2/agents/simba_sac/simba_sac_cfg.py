@@ -13,12 +13,6 @@ class SimbaSACConfig(BaseAgentConfig):
     action_type: Literal['continuous'] = 'continuous'
     # Network name for SimbaSAC
     network_name: Literal['MLP'] = 'MLP'
-    # Random seed for SimbaSAC
-    seed: int = 42
-    # Output train/eval details, level 0,1,2, message from low to high
-    verbose: int = 0
-    # Pytorch model device, cpu, cuda, cuda:0, cuda:1, ...
-    device: str = 'cuda'
 
     """ Training """
     # Total environment steps
@@ -67,3 +61,8 @@ class SimbaSACConfig(BaseAgentConfig):
     # initial value of temperature parameter log_ent_coef
     temp_initial_value: float = 0.01
 
+    """ DIY """
+    # whether to use running state normalization, if False don't update rsnorm anymore
+    use_rsnorm: bool = True
+    # whether to use simba network, if False use sac network
+    use_simba_network: bool = True

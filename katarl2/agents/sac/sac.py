@@ -116,7 +116,7 @@ class SAC(BaseAgent):
             if self.interaction_step < cfg.learning_starts:
                 actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
             else:
-                actions, _, _ = self.actor.get_action(torch.Tensor(obs).to(self.device))
+                actions, _ = self.actor.get_action(torch.Tensor(obs).to(self.device))
                 actions = actions.detach().cpu().numpy()
 
             next_obs, rewards, terminations, truncations, infos = envs.step(actions)
@@ -141,7 +141,7 @@ class SAC(BaseAgent):
                 cfg.num_train_steps += 1
                 data = self.rb.sample(cfg.batch_size)
                 with torch.no_grad():
-                    next_state_actions, next_state_log_pi, _ = self.actor.get_action(data.next_observations)
+                    next_state_actions, next_state_log_pi = self.actor.get_action(data.next_observations)
                     qf1_next_target = self.qf1_target(data.next_observations, next_state_actions)
                     qf2_next_target = self.qf2_target(data.next_observations, next_state_actions)
                     min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - self.ent_coef * next_state_log_pi
@@ -162,7 +162,7 @@ class SAC(BaseAgent):
                     for _ in range(
                         cfg.policy_frequency
                     ):  # compensate for the delay by doing 'actor_update_interval' instead of 1
-                        pi, log_pi, _ = self.actor.get_action(data.observations)
+                        pi, log_pi = self.actor.get_action(data.observations)
                         qf1_pi = self.qf1(data.observations, pi)
                         qf2_pi = self.qf2(data.observations, pi)
                         min_qf_pi = torch.min(qf1_pi, qf2_pi)
@@ -174,7 +174,7 @@ class SAC(BaseAgent):
 
                         if cfg.autotune:
                             with torch.no_grad():
-                                _, log_pi, _ = self.actor.get_action(data.observations)
+                                _, log_pi = self.actor.get_action(data.observations)
                             ent_coef_loss = (-self.log_ent_coef.exp() * (log_pi + self.target_entropy)).mean()
 
                             self.ent_optimizer.zero_grad()

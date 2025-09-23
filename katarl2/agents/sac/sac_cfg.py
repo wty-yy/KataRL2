@@ -13,12 +13,6 @@ class SACConfig(BaseAgentConfig):
     action_type: Literal['continuous'] = 'continuous'
     # Network name for SAC
     network_name: Literal['MLP'] = 'MLP'
-    # Random seed for SAC
-    seed: int = 42
-    # Output train/eval details, level 0,1,2, message from low to high
-    verbose: int = 0
-    # Pytorch model device, cpu, cuda, cuda:0, cuda:1, ...
-    device: str = 'cuda'
 
     """ Training """
     # Total environment steps

@@ -42,12 +42,12 @@ tasks = [
     ("env:dmc", "walker-walk",              [2, 2, 2], [0, 1, 2]),
     ("env:dmc", "walker-run",               [4, 4, 4], [0, 1, 2]),
     # DMC HARD
-    ("env:dmc", "humanoid-walk",            [3, 3, 3], [0, 1, 2]),
-    ("env:dmc", "dog-walk",                 [4, 4, 4], [0, 1, 2]),
-    ("env:dmc", "humanoid-run",             [2, 2, 2], [0, 1, 2]),
-    ("env:dmc", "dog-run",                  [2, 2, 2], [0, 1, 2]),
-    ("env:dmc", "dog-trot",                 [2, 2, 2], [0, 1, 2]),
-    ("env:dmc", "humanoid-stand",           [2, 2, 2], [0, 1, 2]),
+    ("env:dmc", "humanoid-walk",            [7, 7, 7], [0, 1, 2]),
+    ("env:dmc", "dog-walk",                 [7, 7, 7], [0, 1, 2]),
+    ("env:dmc", "humanoid-run",             [6, 6, 6], [0, 1, 2]),
+    ("env:dmc", "dog-run",                  [6, 6, 6], [0, 1, 2]),
+    ("env:dmc", "dog-trot",                 [4, 4, 4], [0, 1, 2]),
+    ("env:dmc", "humanoid-stand",           [4, 4, 4], [0, 1, 2]),
     ("env:dmc", "dog-stand",                [3, 3, 3], [0, 1, 2]),
 ]
 
@@ -55,6 +55,8 @@ tasks = [
 extra_args = [
     # "--logger.use-swanlab",
     # "--logger.use-wandb",
+    # "--agent.no-use-rsnorm",
+    # "--agent.no-use-simba-network",
     "--agent.verbose 1",
     # "--debug",
 ]

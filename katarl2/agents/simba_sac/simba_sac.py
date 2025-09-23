@@ -14,6 +14,7 @@ from torch.utils.tensorboard import SummaryWriter
 from katarl2.agents.common.utils import set_seed_everywhere, enable_deterministic_run
 from katarl2.agents.simba_sac.simba_sac_cfg import SimbaSACConfig
 from katarl2.agents.simba_sac.models.mlp_continuous import Actor, SoftQNetwork
+from katarl2.agents.sac.models.mlp_continuous import Actor as SAC_Actor, SoftQNetwork as SAC_SoftQNetwork
 from katarl2.common import path_manager
 from katarl2.agents.common.buffers import ReplayBuffer, ReplayBufferSamples
 from typing import Optional
@@ -44,8 +45,12 @@ class SimbaSAC(BaseAgent):
             enable_deterministic_run()
 
         """ Model """
-        self.actor = Actor(self.obs_space, self.act_space, cfg.policy_num_blocks, cfg.policy_hidden_dim).to(self.device)
-        create_q_net = lambda: SoftQNetwork(self.obs_space, self.act_space, cfg.q_num_blocks, cfg.q_hidden_dim).to(self.device)
+        if cfg.use_simba_network:
+            self.actor = Actor(self.obs_space, self.act_space, cfg.policy_num_blocks, cfg.policy_hidden_dim).to(self.device)
+            create_q_net = lambda: SoftQNetwork(self.obs_space, self.act_space, cfg.q_num_blocks, cfg.q_hidden_dim).to(self.device)
+        else:
+            self.actor = SAC_Actor(self.obs_space, self.act_space).to(self.device)
+            create_q_net = lambda: SAC_SoftQNetwork(self.obs_space, self.act_space).to(self.device)
         self.qf1 = create_q_net()
         self.qf1_target = create_q_net()
         self.qf1_target.load_state_dict(self.qf1.state_dict())
@@ -122,7 +127,8 @@ class SimbaSAC(BaseAgent):
         fixed_start_time = start_time = time.time()
         last_verbose_time = time.time()
         obs, _ = envs.reset()
-        self.rms.update(obs)
+        if cfg.use_rsnorm:
+            self.rms.update(obs)
 
         cfg.num_interaction_steps = cfg.total_env_steps // self.env_cfg.action_repeat
         bar = range(cfg.num_interaction_steps)
@@ -138,13 +144,15 @@ class SimbaSAC(BaseAgent):
                 actions = actions.detach().cpu().numpy()
 
             next_obs, rewards, terminations, truncations, infos = envs.step(actions)
-            self.rms.update(next_obs)
+            if cfg.use_rsnorm:
+                self.rms.update(next_obs)
 
             # save data to reply buffer; handle `final_obs`
             real_next_obs = next_obs.copy()
             for idx in range(envs.num_envs):
                 if terminations[idx] or truncations[idx]:
-                    self.rms.update(infos['final_obs'][idx])
+                    if cfg.use_rsnorm:
+                        self.rms.update(infos['final_obs'][idx])
                     real_next_obs[idx] = infos["final_obs"][idx]
             if "final_info" in infos and 'episode' in infos['final_info']:
                 final_info = infos['final_info']
