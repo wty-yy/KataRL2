@@ -61,4 +61,9 @@ P.S.
 ## v0.5 (20250922 - 20250923)
 1. [demos/customed](demos/customed)中加入自定义环境测试, 用于测试PPO, SAC算法, 测试不同的obs, reward设计对算法的影响
 2. 对ppo, sac, simba sac加入训练中的return记录
-3. 优化plot_tb_graphs效果, 重新对所有消融实验进行绘图并展示
+3. 优化plot_tb_graphs效果, 重新对所有消融实验进行绘图并展示Gated Linear Unit (GLU) 的变体
+
+## v0.6 (20250925 - )
+1. 加入 SimbaV2
+
+- [ ] 加入对q loss的测试, twohot, hl_gauss

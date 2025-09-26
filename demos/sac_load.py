@@ -1,6 +1,6 @@
 """
 BasicSAC (from cleanrl)
-启动脚本请用: bash ./benchmarks/sac_run_experiments.py
+启动脚本请用: ./benchmarks/sac_run_experiments.py
 查看可用参数: python ./demos/sac.py --help
 单独启动训练:
 python ./demos/sac.py --env.env-type gymnasium --env.env-name Hopper-v4 --total-timesteps 10000

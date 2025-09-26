@@ -130,3 +130,6 @@ pip install -r requirements/requirements_full.txt
     <img src="./assets/figures/sac_ppo_simba/sac_ppo_simba_gym_dmc_hard.png" width="70%"/>
     <img src="./assets/figures/sac_ppo_simba/sac_ppo_simba_gym_dmc_hard_summary.png" width="25%"/>
 </details>
+
+## 致谢
+- @[wertyuilife2](https://github.com/wertyuilife2): SimbaV2网络torch版结构测试

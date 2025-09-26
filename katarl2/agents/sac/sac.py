@@ -188,13 +188,13 @@ class SAC(BaseAgent):
                         time_used = time.time() - start_time
                         SPS = int(self.interaction_step / time_used)
                         logs = {
-                            "losses/qf1_values": qf1_a_values.mean().item(),
-                            "losses/qf2_values": qf2_a_values.mean().item(),
+                            "diagnostics/qf1_values": qf1_a_values.mean().item(),
+                            "diagnostics/qf2_values": qf2_a_values.mean().item(),
                             "losses/qf1_loss": qf1_loss.item(),
                             "losses/qf2_loss": qf2_loss.item(),
                             "losses/qf_loss": qf_loss.item() / 2.0,
                             "losses/actor_loss": actor_loss.item(),
-                            "losses/ent_coef": self.ent_coef,
+                            "diagnostics/ent_coef": self.ent_coef,
                             "charts/SPS": SPS,
                             "charts/time_sec": time_used,
                         }

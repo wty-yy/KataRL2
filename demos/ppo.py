@@ -1,6 +1,6 @@
 """
 PPO (from cleanrl)
-启动脚本: bash ./benchmarks/ppo_run_experiments.py
+启动脚本: ./benchmarks/ppo_run_experiments.py
 查看可用参数: python ./demos/ppo.py --help
 单独启动训练 (子命令选择 {agent:disc, agent:cont} {env:envpool-atari, env:gym-atari, env:gym-mujoco, env:dmc, env:gym-mujoco-simba, env:dmc-simba}):
 python ./demos/ppo.py agent:disc env:envpool-atari --env.env-name Pong-v5 --agent.total-env-steps 10000 --agent.verbose 2 --debug

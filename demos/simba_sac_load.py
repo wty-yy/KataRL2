@@ -1,6 +1,6 @@
 """
 SimbaSAC (from simba)
-启动脚本请用: bash ./benchmarks/simba_sac_run_experiments.py
+启动脚本请用: ./benchmarks/simba_sac_run_experiments.py
 查看可用参数: python ./demos/simba_sac.py --help
 单独启动训练:
 python ./demos/simba_sac_load.py --env.env-type dmc --env.env-name dog-trot

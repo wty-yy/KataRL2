@@ -3,7 +3,7 @@ import torch
 import numpy as np
 
 class RunningMeanStd:
-    def __init__(self, shape: tuple[int, ...], epsilon: float = 1e-4):
+    def __init__(self, shape: tuple[int, ...], epsilon: float = 1e-9):
         """
         Calculates the running mean and std of a data stream
         https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm

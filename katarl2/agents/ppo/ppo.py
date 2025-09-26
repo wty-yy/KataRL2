@@ -273,14 +273,14 @@ class PPO(BaseAgent):
                 time_used = time.time() - start_time
                 SPS = int(cfg.num_env_steps / time_used)
                 logs = {
-                    "charts/learning_rate": self.optimizer.param_groups[0]["lr"],
+                    "diagnostics/learning_rate": self.optimizer.param_groups[0]["lr"],
                     "losses/value_loss": v_loss.item(),
                     "losses/policy_loss": pg_loss.item(),
-                    "losses/entropy": entropy_loss.item(),
-                    "losses/old_approx_kl": old_approx_kl.item(),
-                    "losses/approx_kl": approx_kl.item(),
-                    "losses/clipfrac": np.mean(clipfracs),
-                    "losses/explained_variance": explained_var,
+                    "diagnostics/entropy": entropy_loss.item(),
+                    "diagnostics/old_approx_kl": old_approx_kl.item(),
+                    "diagnostics/approx_kl": approx_kl.item(),
+                    "diagnostics/clipfrac": np.mean(clipfracs),
+                    "diagnostics/explained_variance": explained_var,
                     "charts/SPS": SPS,
                     "charts/time_sec": time_used,
                 }

@@ -3,6 +3,7 @@ import torch
 from torch import optim
 import torch.nn.functional as F
 
+import math
 import time
 import random
 import numpy as np
@@ -12,22 +13,24 @@ from pathlib import Path
 from typing import Literal
 from torch.utils.tensorboard import SummaryWriter
 from katarl2.agents.common.utils import set_seed_everywhere, enable_deterministic_run
-from katarl2.agents.simba_sac.simba_sac_cfg import SimbaSACConfig
-from katarl2.agents.simba_sac.models.mlp_continuous import Actor, SoftQNetwork
-from katarl2.agents.sac.models.mlp_continuous import Actor as SAC_Actor, SoftQNetwork as SAC_SoftQNetwork
+from katarl2.agents.simbav2_sac.simbav2_sac_cfg import SimbaV2SACConfig
+from katarl2.agents.simbav2_sac.models.networks import SimbaV2Actor, SimbaV2Critic, Temperature, update_model_config
 from katarl2.common import path_manager
 from katarl2.agents.common.buffers import ReplayBuffer, ReplayBufferSamples
 from typing import Optional
 from katarl2.common.utils import cvt_string_time
 from katarl2.agents.common.running_mean_std import RunningMeanStd
+from katarl2.agents.common.reward_running_mean_std import RewardRunningMeanStd
 from katarl2.envs.common.env_cfg import EnvConfig
 from katarl2.agents.common.utils import calc_gamma
 from katarl2.agents.common.base_agent import BaseAgent
+from katarl2.agents.simbav2_sac.models.networks import l2normalize_network
+from katarl2.agents.simbav2_sac.models.utils import categorical_td_loss
 
-class SimbaSAC(BaseAgent):
+class SimbaV2SAC(BaseAgent):
     def __init__(
             self, *,
-            cfg: SimbaSACConfig,
+            cfg: SimbaV2SACConfig,
             envs: Optional[gym.vector.SyncVectorEnv] = None,
             eval_envs: Optional[gym.vector.SyncVectorEnv] = None,
             env_cfg: Optional[EnvConfig] = None,
@@ -39,40 +42,54 @@ class SimbaSAC(BaseAgent):
         self.act_space: gym.Space = cfg.act_space
         assert isinstance(self.act_space, gym.spaces.Box), f"[ERROR] Only continuous action space is supported, but current action space={type(self.act_space)}"
 
+        """ Update Config """
+        update_model_config(cfg.model.actor)
+        update_model_config(cfg.model.critic)
+        if cfg.gamma == 'auto':
+            # gamma value is set with a heuristic from TD-MPCv2
+            cfg.gamma = calc_gamma(self.env_cfg.max_episode_env_steps, self.env_cfg.action_repeat)
+        if cfg.updates_per_interaction_step == 'auto':
+            cfg.updates_per_interaction_step = self.env_cfg.action_repeat
+
         """ Seed """
         set_seed_everywhere(cfg.seed)
         if cfg.deterministic:
             enable_deterministic_run()
 
         """ Model """
-        if cfg.use_simba_network:
-            self.actor = Actor(self.obs_space, self.act_space, cfg.policy_num_blocks, cfg.policy_hidden_dim).to(self.device)
-            create_q_net = lambda: SoftQNetwork(self.obs_space, self.act_space, cfg.q_num_blocks, cfg.q_hidden_dim).to(self.device)
-        else:
-            self.actor = SAC_Actor(self.obs_space, self.act_space).to(self.device)
-            create_q_net = lambda: SAC_SoftQNetwork(self.obs_space, self.act_space).to(self.device)
+        obs_dim = np.prod(self.obs_space.shape)
+        act_dim = np.prod(self.act_space.shape)
+        self.actor = SimbaV2Actor(obs_dim, act_dim, cfg.model.actor).to(self.device)
+        create_q_net = lambda: SimbaV2Critic(
+            in_dim=obs_dim + act_dim,
+            num_bins=cfg.model.critic.num_bins,
+            min_v=cfg.model.critic.min_v,
+            max_v=cfg.model.critic.max_v,
+            cfg=cfg.model.critic
+        ).to(self.device)
         self.qf1 = create_q_net()
         self.qf1_target = create_q_net()
         self.qf1_target.load_state_dict(self.qf1.state_dict())
-        if cfg.use_cdq:
+        if cfg.model.critic.use_cdq:
             self.qf2 = create_q_net()
             self.qf2_target = create_q_net()
             self.qf2_target.load_state_dict(self.qf2.state_dict())
 
         """ Optimizer """
-        if cfg.use_cdq:
-            self.q_optimizer = optim.AdamW(list(self.qf1.parameters()) + list(self.qf2.parameters()), lr=cfg.q_lr, weight_decay=cfg.q_weight_decay)
+        if cfg.model.critic.use_cdq:
+            self.q_optimizer = optim.Adam(list(self.qf1.parameters()) + list(self.qf2.parameters()))
         else:
-            self.q_optimizer = optim.AdamW(list(self.qf1.parameters()), lr=cfg.q_lr, weight_decay=cfg.q_weight_decay)
-        self.actor_optimizer = optim.AdamW(list(self.actor.parameters()), lr=cfg.policy_lr, weight_decay=cfg.policy_weight_decay)
+            self.q_optimizer = optim.Adam(self.qf1.parameters())
+        self.actor_optimizer = optim.Adam(self.actor.parameters())
+        self.optimizer_groups = self.q_optimizer.param_groups + self.actor_optimizer.param_groups
 
         """ Auto entropy tuning """
         if cfg.autotune:
             self.target_entropy = -cfg.temp_target_entropy_coef * torch.prod(torch.Tensor(self.act_space.shape).to(self.device)).item()
-            # self.log_ent_coef = torch.zeros(1, requires_grad=True, device=self.device)
-            self.log_ent_coef = torch.full((1,), np.log(cfg.temp_initial_value), device=self.device, requires_grad=True)
-            self.ent_coef = self.log_ent_coef.exp().item()
-            self.ent_optimizer = optim.AdamW([self.log_ent_coef], lr=cfg.q_lr)
+            self.log_ent_coef = Temperature(initial_value=cfg.temp_initial_value).to(self.device)
+            self.ent_coef = self.log_ent_coef().item()
+            self.ent_optimizer = optim.Adam(self.log_ent_coef.parameters())
+            self.optimizer_groups += self.ent_optimizer.param_groups
         else:
             self.ent_coef = cfg.ent_coef
         
@@ -94,29 +111,26 @@ class SimbaSAC(BaseAgent):
             self.PATH_CKPTS.mkdir(exist_ok=True, parents=True)
 
         """ Running statistics normalization """
-        self.rms = RunningMeanStd(self.obs_space.shape)
+        self.obs_rms = RunningMeanStd(self.obs_space.shape)
+        self.rew_rms = RewardRunningMeanStd(gamma=cfg.gamma, max_return=cfg.reward_normalized_max)
 
         self.interaction_step = 0
     
     def predict(self, obs):
         self.actor.eval()
         with torch.no_grad():
-            actions = self.actor.get_action(torch.Tensor(self.rms.normalize(obs)).to(self.device), train=False)[0]
+            actions = self.actor.get_action(torch.Tensor(self.obs_rms.normalize(obs)).to(self.device), train=False)[0]
         return actions.detach().cpu().numpy()
 
     def learn(self):
-        cfg: SimbaSACConfig = self.cfg
+        cfg: SimbaV2SACConfig = self.cfg
         envs, logger = self.envs, self.logger
         self.actor.train()
         self.qf1.train()
         self.qf1_target.train()
-        if cfg.use_cdq:
+        if cfg.model.critic.use_cdq:
             self.qf2.train()
             self.qf2_target.train()
-
-        if cfg.gamma == 'auto':
-            # gamma value is set with a heuristic from TD-MPCv2
-            cfg.gamma = calc_gamma(self.env_cfg.max_episode_env_steps, self.env_cfg.action_repeat)
         
         last_log_interaction_step = -1
         last_eval_interaction_step = -1
@@ -127,10 +141,10 @@ class SimbaSAC(BaseAgent):
         fixed_start_time = start_time = time.time()
         last_verbose_time = time.time()
         obs, _ = envs.reset()
-        if cfg.use_rsnorm:
-            self.rms.update(obs)
+        self.obs_rms.update(obs)
 
         cfg.num_interaction_steps = cfg.total_env_steps // self.env_cfg.action_repeat
+        total_train_steps = cfg.num_interaction_steps * cfg.updates_per_interaction_step
         bar = range(cfg.num_interaction_steps)
         if cfg.verbose == 2:
             bar = tqdm(bar)
@@ -140,19 +154,18 @@ class SimbaSAC(BaseAgent):
             if self.interaction_step < cfg.learning_starts:
                 actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
             else:
-                actions = self.actor.get_action(torch.Tensor(self.rms.normalize(obs)).to(self.device))[0]
+                actions = self.actor.get_action(torch.Tensor(self.obs_rms.normalize(obs)).to(self.device))[0]
                 actions = actions.detach().cpu().numpy()
 
             next_obs, rewards, terminations, truncations, infos = envs.step(actions)
-            if cfg.use_rsnorm:
-                self.rms.update(next_obs)
+            self.obs_rms.update(next_obs)
+            self.rew_rms.update(rewards, terminations | truncations)
 
             # save data to reply buffer; handle `final_obs`
             real_next_obs = next_obs.copy()
             for idx in range(envs.num_envs):
                 if terminations[idx] or truncations[idx]:
-                    if cfg.use_rsnorm:
-                        self.rms.update(infos['final_obs'][idx])
+                    self.obs_rms.update(infos['final_obs'][idx])
                     real_next_obs[idx] = infos["final_obs"][idx]
             if "final_info" in infos and 'episode' in infos['final_info']:
                 final_info = infos['final_info']
@@ -180,34 +193,59 @@ class SimbaSAC(BaseAgent):
             """ Training """
             for _ in range(cfg.updates_per_interaction_step):
                 cfg.num_train_steps += 1
+
+                """ Anneal learning rate """
+                lr = (
+                    (cfg.learning_rate_init - cfg.learning_rate_end) *
+                    (1 - cfg.num_train_steps / (total_train_steps * cfg.learning_rate_fraction))
+                ) + cfg.learning_rate_end
+                for param_group in self.optimizer_groups:
+                    param_group['lr'] = lr
+
+                """ Sample from replay buffer """
                 data = self.rb.sample(cfg.batch_size, to_tensor=False)
-                observations = self.rms.normalize(data.observations)
-                next_observations = self.rms.normalize(data.next_observations)
+                observations = self.obs_rms.normalize(data.observations)
+                next_observations = self.obs_rms.normalize(data.next_observations)
+                rewards = self.rew_rms.normalize(data.rewards)
                 data = (
                     observations,
                     data.actions,
                     next_observations,
                     data.dones,
-                    data.rewards,
+                    rewards,
                 )
                 data = ReplayBufferSamples(*[torch.Tensor(d).to(self.device) for d in data])
 
                 """ Q Networks """
                 with torch.no_grad():
-                    next_state_actions, next_state_log_pi = self.actor.get_action(data.next_observations)
-                    qf1_next_target = self.qf1_target(data.next_observations, next_state_actions)
-                    if cfg.use_cdq:
-                        qf2_next_target = self.qf2_target(data.next_observations, next_state_actions)
-                        qf_next_target = torch.min(qf1_next_target, qf2_next_target) - self.ent_coef * next_state_log_pi
+                    next_actions, next_log_pi = self.actor.get_action(data.next_observations)
+                    next_q1_target, next_q1_log_prob = self.qf1_target(data.next_observations, next_actions)
+                    if cfg.model.critic.use_cdq:
+                        next_q2_target, next_q2_log_prob = self.qf2_target(data.next_observations, next_actions)
+                        next_q_values = torch.stack([next_q1_target, next_q2_target])
+                        next_q_log_probs = torch.stack([next_q1_log_prob, next_q2_log_prob])
+                        next_q_values, min_indices = torch.min(next_q_values, dim=0)
+                        next_q_log_probs = next_q_log_probs[min_indices, torch.arange(cfg.batch_size)]
                     else:
-                        qf_next_target = qf1_next_target - self.ent_coef * next_state_log_pi
-                    next_q_value = data.rewards.flatten() + (1 - data.dones.flatten()) * cfg.gamma * (qf_next_target).view(-1)
+                        next_q_values = next_q1_target
+                        next_q_log_probs = next_q1_log_prob
 
-                qf1_a_values = self.qf1(data.observations, data.actions).view(-1)
-                qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
-                if cfg.use_cdq:
-                    qf2_a_values = self.qf2(data.observations, data.actions).view(-1)
-                    qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
+                _, q1_log_prob = self.qf1(data.observations, data.actions)
+                q_loss_fn = lambda q_log_prob: categorical_td_loss(
+                    pred_log_probs=q_log_prob,
+                    target_log_probs=next_q_log_probs,
+                    reward=data.rewards.view(-1),
+                    done=data.dones.view(-1),
+                    actor_entropy=self.ent_coef * next_log_pi.view(-1),
+                    gamma=cfg.gamma,
+                    num_bins=cfg.model.critic.num_bins,
+                    min_v=cfg.model.critic.min_v,
+                    max_v=cfg.model.critic.max_v,
+                )
+                qf1_loss = q_loss_fn(q1_log_prob)
+                if cfg.model.critic.use_cdq:
+                    _, q2_log_prob = self.qf2(data.observations, data.actions)
+                    qf2_loss = q_loss_fn(q2_log_prob)
                     qf_loss = qf1_loss + qf2_loss
                 else:
                     qf_loss = qf1_loss
@@ -215,33 +253,38 @@ class SimbaSAC(BaseAgent):
                 self.q_optimizer.zero_grad()
                 qf_loss.backward()
                 self.q_optimizer.step()
+                l2normalize_network(self.qf1)
+                cfg.model.critic.use_cdq and l2normalize_network(self.qf2)
                 
                 """ Policy Network """
                 pi, log_pi = self.actor.get_action(data.observations)
-                qf_pi = self.qf1(data.observations, pi)
-                if cfg.use_cdq:
-                    qf2_pi = self.qf2(data.observations, pi)
-                    qf_pi = torch.min(qf_pi, qf2_pi)
-                actor_loss = ((self.ent_coef * log_pi) - qf_pi).mean()
+                q1, _ = self.qf1(data.observations, pi)
+                if cfg.model.critic.use_cdq:
+                    q2, _ = self.qf2(data.observations, pi)
+                    q = torch.min(q1, q2)
+                else:
+                    q = q1
+                actor_loss = (self.ent_coef * log_pi - q).mean()
 
                 self.actor_optimizer.zero_grad()
                 actor_loss.backward()
                 self.actor_optimizer.step()
+                l2normalize_network(self.actor)
 
                 """ Temperature """
                 if cfg.autotune:
                     log_pi = log_pi.detach()
-                    ent_coef_loss = (-self.log_ent_coef.exp() * (log_pi + self.target_entropy)).mean()
+                    ent_coef_loss = (-self.log_ent_coef() * (log_pi + self.target_entropy)).mean()
 
                     self.ent_optimizer.zero_grad()
                     ent_coef_loss.backward()
                     self.ent_optimizer.step()
-                    self.ent_coef = self.log_ent_coef.exp().item()
+                    self.ent_coef = self.log_ent_coef().item()
 
-                """ target networks """
+                """ Target networks """
                 for param, target_param in zip(self.qf1.parameters(), self.qf1_target.parameters()):
                     target_param.data.copy_(cfg.tau * param.data + (1 - cfg.tau) * target_param.data)
-                if cfg.use_cdq:
+                if cfg.model.critic.use_cdq:
                     for param, target_param in zip(self.qf2.parameters(), self.qf2_target.parameters()):
                         target_param.data.copy_(cfg.tau * param.data + (1 - cfg.tau) * target_param.data)
 
@@ -251,7 +294,8 @@ class SimbaSAC(BaseAgent):
                     time_used = time.time() - start_time
                     SPS = int(self.interaction_step / time_used)
                     logs = {
-                        "diagnostics/qf1_values": qf1_a_values.mean().item(),
+                        "diagnostics/learning_rate": lr,
+                        "diagnostics/qf1_values": q1.mean().item(),
                         "losses/qf1_loss": qf1_loss.item(),
                         "losses/qf_loss": qf_loss.item() / 2.0,
                         "losses/actor_loss": actor_loss.item(),
@@ -265,9 +309,9 @@ class SimbaSAC(BaseAgent):
                             "charts/train_episodic_length": np.mean(train_episodic_lens)
                         })
                         train_episodic_returns, train_episodic_lens = [], []
-                    if cfg.use_cdq:
+                    if cfg.model.critic.use_cdq:
                         logs.update({
-                            "diagnostics/qf2_values": qf2_a_values.mean().item(),
+                            "diagnostics/qf2_values": q2.mean().item(),
                             "losses/qf2_loss": qf2_loss.item(),
                         })
                     if cfg.autotune:
@@ -296,9 +340,10 @@ class SimbaSAC(BaseAgent):
                 'actor': to_cpu(self.actor.state_dict()),
                 'qf1': to_cpu(self.qf1.state_dict()),
             },
-            'rms': self.rms.get_statistics()
+            'obs_rms': self.obs_rms.get_statistics(),
+            'rew_rms': self.rew_rms.get_data(),
         }
-        if self.cfg.use_cdq:
+        if self.cfg.model.critic.use_cdq:
             data['model']['qf2'] = to_cpu(self.qf2.state_dict())
         path_ckpt = self._save(data, path)
         return path_ckpt
@@ -309,8 +354,9 @@ class SimbaSAC(BaseAgent):
         self = cls(cfg=data['config'])
         self.actor.load_state_dict(data['model']['actor'])
         self.qf1.load_state_dict(data['model']['qf1'])
-        if self.cfg.use_cdq:
+        if self.cfg.model.critic.use_cdq:
             self.qf2.load_state_dict(data['model']['qf2'])
-        self.rms.load_statistics(data['rms'])
+        self.obs_rms.load_statistics(data['obs_rms'])
+        self.rew_rms.load_data(data['rew_rms'])
         print(f"[INFO] Load SimbaSAC model from {path} successfully.")
         return self

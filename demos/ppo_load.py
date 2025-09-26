@@ -1,6 +1,6 @@
 """
 PPO (from cleanrl)
-启动脚本请用: bash ./benchmarks/ppo_run_experiments.py
+启动脚本请用: ./benchmarks/ppo_run_experiments.py
 查看可用参数: python ./demos/ppo_load.py --help
 单独启动训练:
 python ./demos/ppo_load.py --model-path /data1/user/wutianyang/Coding/GitHub/KataRL2/logs/ppo/simba_continuous_mlp/dog-walk__dmc/seed_0_0/20250830-173432/ckpts/sac-4880.pkl
