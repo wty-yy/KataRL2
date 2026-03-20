@@ -68,7 +68,7 @@ class BaseAgentConfig:
 
 def get_full_policy_name(cfg: BaseAgentConfig) -> str:
     name = f"{cfg.policy_name.lower()}_{cfg.action_type.lower()}_{cfg.network_name.lower()}"
-    if cfg.algo_name.lower() == 'ppo' and cfg.policy_name.lower() == 'basic':
+    if cfg.algo_name.lower() == 'ppo' and cfg.policy_name.lower() in ('basic', 'spo'):
         if cfg.layer_norm_network:
             name += '_LN'
         if cfg.instance_norm_network:

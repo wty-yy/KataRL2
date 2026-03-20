@@ -18,16 +18,18 @@
 5. 相比`cleanrl`, `stable baselines3`更加高效, 减少冗余信息输出并减少嵌套代码
 6. 用python脚本方便地启动`benchmark`测试 (启动不同算法, 不同环境, 不同种子的实验)
 7. 支持模型的训练曲线保存, 保持日志文件路径规范, 自动读取tensorboard日志整理绘制曲线图
+8. 部分算法支持`torch.compile`加速 (需要PyTorch 2.0+)
 
 ## 支持
 ### 算法
-| 算法 | `Box` | `Discrete` | `MultiDiscrete` | 网络结构 |
-| - | - | - | - | - |
-| SAC | ✔️ | ❌️ | ❌️ | MLP |
-| SimbaSAC | ✔️ | ❌️ | ❌️ | MLP |
-| SimbaV2SAC | ✔️ | ❌️ | ❌️ | MLP |
-| PPO | ✔️ | ✔️ | ❌️ | MLP, CNN+MLP |
-| SimbaPPO | ✔️ | ✔️️ | ❌️ | MLP, CNN+MLP |
+| 算法 | `Box` | `Discrete` | `MultiDiscrete` | 网络结构 | `torch.compile` |
+| - | - | - | - | - | - |
+| SAC | ✔️ | ❌️ | ❌️ | MLP | ️️️️❌️ |
+| SimbaSAC | ✔️ | ❌️ | ❌️ | MLP | ❌️ |
+| SimbaV2SAC | ✔️ | ❌️ | ❌️ | MLP | ❌️ |
+| PPO | ✔️ | ✔️ | ❌️ | MLP, CNN+MLP | ✔️ |
+| SimbaPPO | ✔️ | ✔️️ | ❌️ | MLP, CNN+MLP | ✔️ |
+| SPO | ✔️ | ✔️️ | ❌️ | MLP, CNN+MLP | ✔️ |
 
 ### 环境
 1. gymnaisum: mujoco-py
@@ -123,5 +125,15 @@ pip install -r requirements/requirements.txt
     <img src="./assets/figures/sac_ppo_simba/sac_ppo_simba_gym_dmc_hard_summary.png" width="25%"/>
 </details>
 
+## 参考
+1. [cleanrl](https://github.com/vwxyzjn/cleanrl)
+2. [leanrl](https://github.com/meta-pytorch/LeanRL)
+3. [Proximal Policy Optimization Algorithms](https://arxiv.org/abs/1707.06347)
+4. [Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor](https://arxiv.org/abs/1801.01290)
+5. [Simple Policy Optimization](https://arxiv.org/abs/2401.16025)
+6. [SimBa: Simplicity Bias for Scaling Up Parameters in Deep Reinforcement Learning](https://arxiv.org/abs/2410.09754)
+7. [Hyperspherical Normalization for Scalable Deep Reinforcement Learning](https://arxiv.org/abs/2502.15280)
+
+
 ## 致谢
-- @[wertyuilife2](https://github.com/wertyuilife2): SimbaV2网络torch版结构测试
+- [@wertyuilife2](https://github.com/wertyuilife2): SimbaV2网络torch版结构测试

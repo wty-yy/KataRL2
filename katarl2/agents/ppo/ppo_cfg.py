@@ -7,7 +7,7 @@ class PPODiscreteConfig(BaseAgentConfig):
     # Algorithm name
     algo_name: Literal['PPO'] = 'PPO'
     # Policy name
-    policy_name: Literal['Basic', 'Simba'] = 'Basic'
+    policy_name: Literal['Basic', 'Simba', 'SPO'] = 'Basic'
     # Action type
     action_type: Literal['discrete', 'continuous'] = 'discrete'
     # Network name
@@ -84,10 +84,22 @@ class PPOContinuousConfig(PPODiscreteConfig):
     # coefficient of the entropy
     ent_coef: float = 0.0
 
+
+@dataclass
+class SPODiscreteConfig(PPODiscreteConfig):
+    # Policy name
+    policy_name: Literal['Basic', 'Simba', 'SPO'] = 'SPO'
+
+
+@dataclass
+class SPOContinuousConfig(PPOContinuousConfig):
+    # Policy name
+    policy_name: Literal['Basic', 'Simba', 'SPO'] = 'SPO'
+
 @dataclass
 class SimbaPPOContinuousConfig(PPOContinuousConfig):
     # Policy name
-    policy_name: Literal['Basic', 'Simba'] = 'Simba'
+    policy_name: Literal['Basic', 'Simba', 'SPO'] = 'Simba'
     # the number of critic residual blocks
     critic_num_blocks: int = 2
     # the hidden dimension of critic residual block
@@ -106,7 +118,7 @@ class SimbaPPOContinuousConfig(PPOContinuousConfig):
 @dataclass
 class SimbaPPODiscreteConfig(PPODiscreteConfig):
     # Policy name
-    policy_name: Literal['Basic', 'Simba'] = 'Simba'
+    policy_name: Literal['Basic', 'Simba', 'SPO'] = 'Simba'
     # the number of critic residual blocks
     critic_num_blocks: int = 2
     # the hidden dimension of critic residual block
@@ -122,4 +134,11 @@ class SimbaPPODiscreteConfig(PPODiscreteConfig):
     # optimizer: Literal['adam', 'adamw'] = 'adamw'
     # weight_decay: float = 1e-2
 
-PPOConfig = Union[PPODiscreteConfig, PPOContinuousConfig, SimbaPPOContinuousConfig, SimbaPPODiscreteConfig]
+PPOConfig = Union[
+    PPODiscreteConfig,
+    PPOContinuousConfig,
+    SPODiscreteConfig,
+    SPOContinuousConfig,
+    SimbaPPOContinuousConfig,
+    SimbaPPODiscreteConfig,
+]

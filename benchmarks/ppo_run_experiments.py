@@ -13,50 +13,51 @@ sleep_time = 0
 
 ppo_type2suffix = {  # suffix for action_type and env_subcommand
     'basic': '',
+    'spo': '-spo',
     'simba': '-simba'
 }
 
 # 配置任务
-ppo_type: Literal['basic', 'simba'] = 'basic'
+ppo_type: Literal['basic', 'spo', 'simba'] = 'basic'
 atari_suit: Literal['gym', 'envpool'] = 'envpool'
 tasks = [
     # (action_type, env_subcommand, env_name, cuda_list, seed_list)
     # Discrete Gymnasium
     ("agent:disc", f"env:{atari_suit}-atari", 'Assault-v5',       [0, 0, 0], [0, 1, 2]),
     ("agent:disc", f"env:{atari_suit}-atari", 'Asterix-v5',       [0, 0, 0], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'BeamRider-v5',     [0, 0, 0], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'BeamRider-v5',     [1, 1, 1], [0, 1, 2]),
     ("agent:disc", f"env:{atari_suit}-atari", 'Boxing-v5',        [1, 1, 1], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'Breakout-v5',      [1, 1, 1], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'Enduro-v5',        [1, 1, 1], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'Frostbite-v5',     [2, 2, 2], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'Hero-v5',          [2, 2, 2], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'MsPacman-v5',      [2, 2, 2], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'Phoenix-v5',       [3, 3, 3], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'Pong-v5',          [3, 3, 3], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'Qbert-v5',         [3, 3, 3], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'Seaquest-v5',      [0, 0, 0], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'SpaceInvaders-v5', [1, 1, 1], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'UpNDown-v5',       [2, 2, 2], [0, 1, 2]),
-    ("agent:disc", f"env:{atari_suit}-atari", 'WizardOfWor-v5',   [3, 3, 3], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'Breakout-v5',      [2, 2, 2], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'Enduro-v5',        [2, 2, 2], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'Frostbite-v5',     [3, 3, 3], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'Hero-v5',          [3, 3, 3], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'MsPacman-v5',      [4, 4, 4], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'Phoenix-v5',       [4, 4, 4], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'Pong-v5',          [5, 5, 5], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'Qbert-v5',         [5, 5, 5], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'Seaquest-v5',      [6, 6, 6], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'SpaceInvaders-v5', [6, 6, 6], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'UpNDown-v5',       [7, 7, 7], [0, 1, 2]),
+    ("agent:disc", f"env:{atari_suit}-atari", 'WizardOfWor-v5',   [7, 7, 7], [0, 1, 2]),
     # Continuous
-    ("agent:cont", "env:gym-mujoco", "Ant-v4",              [6, 6, 6], [0, 1, 2]),
-    ("agent:cont", "env:gym-mujoco", "HalfCheetah-v4",      [0, 0, 0], [0, 1, 2]),
-    ("agent:cont", "env:gym-mujoco", "Hopper-v4",           [1, 1, 1], [0, 1, 2]),
-    ("agent:cont", "env:gym-mujoco", "HumanoidStandup-v4",  [7, 7, 7], [0, 1, 2]),
-    ("agent:cont", "env:gym-mujoco", "Humanoid-v4",         [2, 2, 2], [0, 1, 2]),
-    ("agent:cont", "env:gym-mujoco", "InvertedPendulum-v4", [3, 3, 3], [0, 1, 2]),
-    ("agent:cont", "env:gym-mujoco", "Pusher-v5",           [4, 4, 4], [0, 1, 2]),
-    ("agent:cont", "env:gym-mujoco", "Walker2d-v4",         [5, 5, 5], [0, 1, 2]),
+    ("agent:cont", "env:gym-mujoco", "Ant-v4",              [0, 0, 0], [0, 1, 2]),
+    ("agent:cont", "env:gym-mujoco", "HalfCheetah-v4",      [1, 1, 1], [0, 1, 2]),
+    ("agent:cont", "env:gym-mujoco", "Hopper-v4",           [2, 2, 2], [0, 1, 2]),
+    ("agent:cont", "env:gym-mujoco", "HumanoidStandup-v4",  [3, 3, 3], [0, 1, 2]),
+    ("agent:cont", "env:gym-mujoco", "Humanoid-v4",         [4, 4, 4], [0, 1, 2]),
+    ("agent:cont", "env:gym-mujoco", "InvertedPendulum-v4", [5, 5, 5], [0, 1, 2]),
+    ("agent:cont", "env:gym-mujoco", "Pusher-v5",           [6, 6, 6], [0, 1, 2]),
+    ("agent:cont", "env:gym-mujoco", "Walker2d-v4",         [7, 7, 7], [0, 1, 2]),
     # DMC Easy
     ("agent:cont", "env:dmc", "walker-walk",                [2, 2, 2], [0, 1, 2]),
     ("agent:cont", "env:dmc", "walker-run",                 [0, 0, 0], [0, 1, 2]),
     # DMC HARD
-    ("agent:cont", "env:dmc", "humanoid-walk",              [3, 3, 3], [0, 1, 2]),
-    ("agent:cont", "env:dmc", "dog-walk",                   [6, 6, 6], [0, 1, 2]),
-    ("agent:cont", "env:dmc", "humanoid-run",               [1, 1, 1], [0, 1, 2]),
-    ("agent:cont", "env:dmc", "dog-run",                    [2, 2, 2], [0, 1, 2]),
-    ("agent:cont", "env:dmc", "dog-trot",                   [3, 3, 3], [0, 1, 2]),
-    ("agent:cont", "env:dmc", "humanoid-stand",             [4, 4, 4], [0, 1, 2]),
+    ("agent:cont", "env:dmc", "humanoid-walk",              [0, 0, 0], [0, 1, 2]),
+    ("agent:cont", "env:dmc", "dog-walk",                   [1, 1, 1], [0, 1, 2]),
+    ("agent:cont", "env:dmc", "humanoid-run",               [2, 2, 2], [0, 1, 2]),
+    ("agent:cont", "env:dmc", "dog-run",                    [3, 3, 3], [0, 1, 2]),
+    ("agent:cont", "env:dmc", "dog-trot",                   [4, 4, 4], [0, 1, 2]),
+    ("agent:cont", "env:dmc", "humanoid-stand",             [5, 5, 5], [0, 1, 2]),
     ("agent:cont", "env:dmc", "dog-stand",                  [6, 6, 6], [0, 1, 2]),
 ]
 
@@ -65,6 +66,7 @@ extra_args = [
     # "--logger.use-swanlab",
     # "--logger.use-wandb",
     "--agent.verbose 1",
+    "--agent.compile",
     # "--debug",
     # "--agent.layer-norm-network",
     # "--agent.instance-norm-network",

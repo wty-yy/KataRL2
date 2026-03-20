@@ -60,7 +60,7 @@ class PPO(BaseAgent):
             enable_deterministic_run()
 
         """ Model """
-        if cfg.policy_name == 'Basic':
+        if cfg.policy_name in ('Basic', 'SPO'):
             if cfg.action_type == 'discrete':
                 if cfg.layer_norm_network and not cfg.norm_before_activate_network:
                     print("[INFO] Use default Agent_LN")
@@ -178,9 +178,15 @@ class PPO(BaseAgent):
             mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
         # Policy loss
-        pg_loss1 = -mb_advantages * ratio
-        pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - cfg.clip_coef, 1 + cfg.clip_coef)
-        pg_loss = torch.max(pg_loss1, pg_loss2).mean()
+        if cfg.policy_name == 'SPO':
+            # Simple Policy Optimization replaces PPO clipping with a
+            # quadratic penalty around ratio=1 whose strength depends on |A|.
+            spo_objective = ratio * mb_advantages - mb_advantages.abs() * (ratio - 1).square() / (2 * cfg.clip_coef)
+            pg_loss = -spo_objective.mean()
+        else:
+            pg_loss1 = -mb_advantages * ratio
+            pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - cfg.clip_coef, 1 + cfg.clip_coef)
+            pg_loss = torch.max(pg_loss1, pg_loss2).mean()
 
         # Value loss
         newvalue = newvalue.view(-1)
@@ -374,5 +380,4 @@ class PPO(BaseAgent):
         self.agent.load_state_dict(data['agent'])
         print(f"[INFO] Load PPO model from {path} successfully.")
         return self
-
 

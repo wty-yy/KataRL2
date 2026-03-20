@@ -2,13 +2,16 @@
 PPO (from cleanrl)
 启动脚本: ./benchmarks/ppo_run_experiments.py
 查看可用参数: python ./demos/ppo.py --help
-单独启动训练 (子命令选择 {agent:disc, agent:cont} {env:envpool-atari, env:gym-atari, env:gym-mujoco, env:dmc, env:gym-mujoco-simba, env:dmc-simba}):
+单独启动训练 (子命令选择 {agent:disc, agent:cont, agent:disc-spo, agent:cont-spo} {env:envpool-atari, env:gym-atari, env:gym-mujoco, env:dmc, env:gym-mujoco-simba, env:dmc-simba, env:gym-atari-spo, env:gym-mujoco-spo, env:dmc-spo}):
 python ./demos/ppo.py agent:disc env:envpool-atari --env.env-name Pong-v5 --agent.total-env-steps 100000 --agent.verbose 2 --debug
 python ./demos/ppo.py agent:disc env:gym-atari --env.env-name Pong-v5 --agent.total-env-steps 100000 --agent.verbose 2 --debug
+python ./demos/ppo.py agent:disc-spo env:envpool-atari-spo --env.env-name Pong-v5 --agent.total-env-steps 100000 --agent.verbose 2 --debug
 python ./demos/ppo.py agent:disc-simba env:envpool-atari-simba --env.env-name Pong-v5 --agent.total-env-steps 100000 --agent.verbose 2 --debug
 python ./demos/ppo.py agent:disc-simba env:gym-atari-simba --env.env-name Pong-v5 --agent.total-env-steps 100000 --agent.verbose 2 --debug
 python ./demos/ppo.py agent:cont env:gym-mujoco --env.env-name Hopper-v4 --agent.total-env-steps 100000 --agent.verbose 2 --debug
 python ./demos/ppo.py agent:cont env:dmc --env.env-name walker-walk --agent.total-env-steps 100000 --agent.verbose 2 --debug
+python ./demos/ppo.py agent:cont-spo env:gym-mujoco-spo --env.env-name Hopper-v4 --agent.total-env-steps 100000 --agent.verbose 2 --debug
+python ./demos/ppo.py agent:cont-spo env:dmc-spo --env.env-name walker-walk --agent.total-env-steps 100000 --agent.verbose 2 --debug
 python ./demos/ppo.py agent:cont-simba env:gym-mujoco-simba --env.env-name Hopper-v4 --agent.total-env-steps 100000 --agent.verbose 2 --debug
 python ./demos/ppo.py agent:cont-simba env:dmc-simba --env.env-name walker-walk --agent.total-env-steps 100000 --agent.verbose 2 --debug
 """
@@ -23,7 +26,15 @@ os.environ["MKL_NUM_THREADS"] = "2"
 import tyro
 from typing import Union, Annotated
 from dataclasses import dataclass
-from katarl2.agents import PPO, PPODiscreteConfig, PPOContinuousConfig, SimbaPPOContinuousConfig, SimbaPPODiscreteConfig
+from katarl2.agents import (
+    PPO,
+    PPODiscreteConfig,
+    PPOContinuousConfig,
+    SPODiscreteConfig,
+    SPOContinuousConfig,
+    SimbaPPOContinuousConfig,
+    SimbaPPODiscreteConfig,
+)
 from katarl2.agents.ppo.ppo_env_cfg import (
     PPOEnvpoolAtariEnvConfig, PPOGymAtariEnvConfig,
     PPODMCEnvConfig, PPOGymMujocoEnvConfig,
@@ -42,6 +53,10 @@ class Args:
         Annotated[PPODiscreteConfig, tyro.conf.subcommand('disc')],
         # Continuous action space
         Annotated[PPOContinuousConfig, tyro.conf.subcommand('cont')],
+        # Discrete action space with SPO loss
+        Annotated[SPODiscreteConfig, tyro.conf.subcommand('disc-spo')],
+        # Continuous action space with SPO loss
+        Annotated[SPOContinuousConfig, tyro.conf.subcommand('cont-spo')],
         # Discrete action space with Simba tricks
         Annotated[SimbaPPODiscreteConfig, tyro.conf.subcommand('disc-simba')],
         # Continuous action space with Simba tricks
@@ -53,6 +68,11 @@ class Args:
         Annotated[PPOGymMujocoEnvConfig, tyro.conf.subcommand('gym-mujoco')],
         Annotated[PPOEnvpoolAtariEnvConfig, tyro.conf.subcommand('envpool-atari')],
         Annotated[PPOGymAtariEnvConfig, tyro.conf.subcommand('gym-atari')],
+        # Env SPO Config
+        Annotated[PPODMCEnvConfig, tyro.conf.subcommand('dmc-spo')],
+        Annotated[PPOGymMujocoEnvConfig, tyro.conf.subcommand('gym-mujoco-spo')],
+        Annotated[PPOEnvpoolAtariEnvConfig, tyro.conf.subcommand('envpool-atari-spo')],  # same
+        Annotated[PPOGymAtariEnvConfig, tyro.conf.subcommand('gym-atari-spo')],  # same
         # Env Simba Config
         Annotated[SimbaPPODMCEnvConfig, tyro.conf.subcommand('dmc-simba')],
         Annotated[SimbaPPOGymMujocoEnvConfig, tyro.conf.subcommand('gym-mujoco-simba')],

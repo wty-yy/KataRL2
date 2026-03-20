@@ -1,10 +1,13 @@
 # CHANGELOG
 ## TODO
-- [ ] 加入对ppo, sac, simba, simbav2的速度提升
+- [ ] 加入对sac, simba, simbav2的速度提升
 - [ ] 加入对q loss的测试, twohot, hl_gauss
 
-## v0.6.1 (20260320)
+## 20260320
+### v0.6.1
 1. 加入 torch.compile 对PPO的加速测试，测试结果在[torch_compile_benchmark.md](./docs/torch_compile_benchmark.md)中
+### v0.7
+1. 加入[SPO](https://arxiv.org/abs/2401.16025)算法，区别仅在计算policy loss
 
 ## v0.6 (20250925)
 1. 加入 SimbaV2
