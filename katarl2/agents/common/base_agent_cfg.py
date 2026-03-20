@@ -23,6 +23,8 @@ class BaseAgentConfig:
     device: str = 'cuda'
     # Full name (used for logging and saving, don't setup in CLI)
     full_name: Optional[str] = None
+    # Whether to use torch.compile
+    compile: bool = False
     
     """ Environment (setup after envs created) """
     # Don't setup these params in CLI

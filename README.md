@@ -25,6 +25,7 @@
 | - | - | - | - | - |
 | SAC | ✔️ | ❌️ | ❌️ | MLP |
 | SimbaSAC | ✔️ | ❌️ | ❌️ | MLP |
+| SimbaV2SAC | ✔️ | ❌️ | ❌️ | MLP |
 | PPO | ✔️ | ✔️ | ❌️ | MLP, CNN+MLP |
 | SimbaPPO | ✔️ | ✔️️ | ❌️ | MLP, CNN+MLP |
 
@@ -33,20 +34,11 @@
 2. dm_control
 
 ## 运行环境安装
-1. 最简安装
+完全安装 (包含全部交互环境)
 ```bash
-# conda创建环境并安装
-conda env create -f requirements/conda_requirements.yaml
-# pip安装
+conda create -n katarl2 python=3.11
+conda activate katarl2
 pip install -r requirements/requirements.txt
-```
-
-2. 完全安装 (包含全部交互环境)
-```bash
-# conda创建环境并安装
-conda env create -f requirements/conda_requirements_full.yaml
-# pip安装
-pip install -r requirements/requirements_full.txt
 ```
 
 ### 可选安装
