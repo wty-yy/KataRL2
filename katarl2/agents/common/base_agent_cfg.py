@@ -67,8 +67,13 @@ class BaseAgentConfig:
     # more params ...
 
 def get_full_policy_name(cfg: BaseAgentConfig) -> str:
-    name = f"{cfg.policy_name.lower()}_{cfg.action_type.lower()}_{cfg.network_name.lower()}"
+    network_name = cfg.network_name.lower()
+    name = f"{cfg.policy_name.lower()}_{cfg.action_type.lower()}_{network_name}"
     if cfg.algo_name.lower() == 'ppo' and cfg.policy_name.lower() in ('basic', 'spo'):
+        if cfg.action_type == 'continuous' and hasattr(cfg, 'policy_layers'):
+            name += f'_{cfg.policy_layers}l'
+        if getattr(cfg, 'adaptive_learning_rate', False):
+            name += '_adaptlr'
         if cfg.layer_norm_network:
             name += '_LN'
         if cfg.instance_norm_network:

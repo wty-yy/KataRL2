@@ -3,6 +3,15 @@
 - [ ] 加入对sac, simba, simbav2的速度提升
 - [ ] 加入对q loss的测试, twohot, hl_gauss
 
+## v0.7.1 (20260321)
+1. 参考 `Simple-Policy-Optimization` 对 `SPO` 做进一步对齐，并将变更限制在 `SPODiscreteConfig` / `SPOContinuousConfig` 上，不再污染原始 `PPO` 默认配置
+2. 为 `SPO` 新增独立环境配置：Atari、Gym Mujoco、DMC 都拆出 `*-spo` 版本，并保留 `Simba` 独立环境配置
+3. `SPO` Atari 默认支持 ResNet 编码器，连续控制支持 3 层/7 层 actor；创建网络后会输出当前网络结构、总参数量和可训练参数量
+4. `SPOContinuousConfig` 默认启用 adaptive learning rate，并使用与参考实现一致的 `desired_kl=0.01` 与 KL 阈值调节策略；离散 `SPO` 不启用，但是`clip_coef: 0.1 -> 0.2`
+5. 为 PPO 加入 compile warmup，并默认在 `compile=True` 时自动执行；warmup 不再计入训练计时
+6. `demos/ppo.py` 支持根据 `agent.policy_name` 自动将普通环境配置覆写为对应的 `-spo` / `-simba` 环境配置，减少手动双写子命令
+7. 更新 [docs/torch_compile_benchmark.md](./docs/torch_compile_benchmark.md)，补充 `SPO` 的 compile 加速比例
+
 ## 20260320
 ### v0.6.1
 1. 加入 torch.compile 对PPO的加速测试，测试结果在[torch_compile_benchmark.md](./docs/torch_compile_benchmark.md)中

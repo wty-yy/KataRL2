@@ -25,7 +25,7 @@ os.environ["MKL_NUM_THREADS"] = "2"
 
 import tyro
 from typing import Union, Annotated
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from katarl2.agents import (
     PPO,
     PPODiscreteConfig,
@@ -38,6 +38,8 @@ from katarl2.agents import (
 from katarl2.agents.ppo.ppo_env_cfg import (
     PPOEnvpoolAtariEnvConfig, PPOGymAtariEnvConfig,
     PPODMCEnvConfig, PPOGymMujocoEnvConfig,
+    SPOEnvpoolAtariEnvConfig, SPOGymAtariEnvConfig,
+    SPODMCEnvConfig, SPOGymMujocoEnvConfig,
     SimbaPPODMCEnvConfig, SimbaPPOGymMujocoEnvConfig
 )
 from katarl2.common.logger import LogConfig, get_tensorboard_writer
@@ -45,6 +47,40 @@ from katarl2.envs.env_maker import make_envs
 from katarl2.common import path_manager
 from katarl2.common.video_process import cvt_to_gif
 from pprint import pprint
+
+
+def _convert_env_cfg(src_env, target_cls):
+    values = {}
+    for field in fields(target_cls):
+        if hasattr(src_env, field.name):
+            values[field.name] = getattr(src_env, field.name)
+    return target_cls(**values)
+
+
+def _auto_align_env_cfg(agent_cfg, env_cfg):
+    policy_name = agent_cfg.policy_name
+    target_cls = None
+
+    if policy_name == 'SPO':
+        if isinstance(env_cfg, PPOEnvpoolAtariEnvConfig):
+            target_cls = SPOEnvpoolAtariEnvConfig
+        elif isinstance(env_cfg, PPOGymAtariEnvConfig):
+            target_cls = SPOGymAtariEnvConfig
+        elif isinstance(env_cfg, PPOGymMujocoEnvConfig):
+            target_cls = SPOGymMujocoEnvConfig
+        elif isinstance(env_cfg, PPODMCEnvConfig):
+            target_cls = SPODMCEnvConfig
+    elif policy_name == 'Simba':
+        if isinstance(env_cfg, PPOGymMujocoEnvConfig):
+            target_cls = SimbaPPOGymMujocoEnvConfig
+        elif isinstance(env_cfg, PPODMCEnvConfig):
+            target_cls = SimbaPPODMCEnvConfig
+
+    if target_cls is None or isinstance(env_cfg, target_cls):
+        return env_cfg
+
+    print(f"[INFO] Auto override env config: {type(env_cfg).__name__} -> {target_cls.__name__}")
+    return _convert_env_cfg(env_cfg, target_cls)
 
 @dataclass
 class Args:
@@ -69,10 +105,10 @@ class Args:
         Annotated[PPOEnvpoolAtariEnvConfig, tyro.conf.subcommand('envpool-atari')],
         Annotated[PPOGymAtariEnvConfig, tyro.conf.subcommand('gym-atari')],
         # Env SPO Config
-        Annotated[PPODMCEnvConfig, tyro.conf.subcommand('dmc-spo')],
-        Annotated[PPOGymMujocoEnvConfig, tyro.conf.subcommand('gym-mujoco-spo')],
-        Annotated[PPOEnvpoolAtariEnvConfig, tyro.conf.subcommand('envpool-atari-spo')],  # same
-        Annotated[PPOGymAtariEnvConfig, tyro.conf.subcommand('gym-atari-spo')],  # same
+        Annotated[SPODMCEnvConfig, tyro.conf.subcommand('dmc-spo')],
+        Annotated[SPOGymMujocoEnvConfig, tyro.conf.subcommand('gym-mujoco-spo')],
+        Annotated[SPOEnvpoolAtariEnvConfig, tyro.conf.subcommand('envpool-atari-spo')],
+        Annotated[SPOGymAtariEnvConfig, tyro.conf.subcommand('gym-atari-spo')],
         # Env Simba Config
         Annotated[SimbaPPODMCEnvConfig, tyro.conf.subcommand('dmc-simba')],
         Annotated[SimbaPPOGymMujocoEnvConfig, tyro.conf.subcommand('gym-mujoco-simba')],
@@ -85,6 +121,7 @@ class Args:
 if __name__ == '__main__':
     """ Preprocess """
     args: Args = tyro.cli(Args, config=(tyro.conf.ConsolidateSubcommandArgs,))
+    args.env = _auto_align_env_cfg(args.agent, args.env)
     path_manager.build_path_logs(args.agent, args.env, args.debug)
     envs, eval_envs = make_envs(args.env)
     logger = get_tensorboard_writer(args.logger, args)

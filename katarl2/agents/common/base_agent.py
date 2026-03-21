@@ -37,6 +37,9 @@ class BaseAgent:
         self.env_cfg = env_cfg
         self.logger = logger
         self.device = cfg.device if torch.cuda.is_available() and 'cuda' in cfg.device else 'cpu'
+        if self.device != 'cpu':
+            device_obj = torch.device(self.device)
+            torch.cuda.set_device(0 if device_obj.index is None else device_obj.index)
 
         if envs is not None:
             # 将环境的必要参数保存到agent配置中, 便于模型加载时使用

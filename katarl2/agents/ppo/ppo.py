@@ -21,15 +21,22 @@ from katarl2.agents.ppo.models import (
     Agent,
     Agent_IN, Agent_IN_before_norm,
     Agent_LN, Agent_LN_before_norm,
+    Agent_CNN_ResNet,
     Agent_MLP_continuous,
     Agent_MLP_continuous_Simba,
     Agent_CNN_Simba,
 )
 from katarl2.common import path_manager
-from katarl2.common.utils import cvt_string_time
+from katarl2.common.utils import cvt_string_time, count_parameters
 from katarl2.agents.common.running_mean_std import RunningMeanStd
 
 torch.set_float32_matmul_precision('high')
+
+
+def compute_gaussian_kld(mu_1, sigma_1, mu_2, sigma_2):
+    return torch.log(sigma_2 / sigma_1) + (
+        (mu_1 - mu_2).square() + sigma_1.square() - sigma_2.square()
+    ) / (2 * sigma_2.square())
 
 class PPO(BaseAgent):
     def __init__(
@@ -74,11 +81,16 @@ class PPO(BaseAgent):
                 elif cfg.instance_norm_network and cfg.norm_before_activate_network:
                     print("[INFO] Use default Agent_IN_before_norm")
                     self.agent = Agent_IN_before_norm(self.act_space).to(self.device)
+                elif cfg.use_resnet:
+                    print("[INFO] Use Simple-Policy-Optimization ResNet Atari encoder")
+                    self.agent = Agent_CNN_ResNet(self.act_space).to(self.device)
                 else:
                     print("[INFO] Use default agent")
                     self.agent = Agent(self.act_space).to(self.device)
             elif cfg.action_type == 'continuous':
-                self.agent = Agent_MLP_continuous(self.obs_space, self.act_space).to(self.device)
+                self.agent = Agent_MLP_continuous(
+                    self.obs_space, self.act_space, policy_layers=cfg.policy_layers
+                ).to(self.device)
         elif cfg.policy_name == 'Simba':
             if cfg.action_type == 'discrete':
                 self.agent = Agent_CNN_Simba(
@@ -92,6 +104,9 @@ class PPO(BaseAgent):
                     cfg.critic_num_blocks, cfg.critic_hidden_dim,
                     cfg.actor_num_blocks, cfg.actor_hidden_dim
                 ).to(self.device)
+        total_params, trainable_params = count_parameters(self.agent)
+        print(f"[INFO] Network architecture:\n{self.agent}")
+        print(f"[INFO] Parameters: total={total_params:,}, trainable={trainable_params:,}")
         
         """ Create/Inherit Running Statistics Normalization """
         if cfg.policy_name == 'Simba':
@@ -115,6 +130,12 @@ class PPO(BaseAgent):
         self.rewards = torch.zeros((cfg.num_steps, cfg.num_envs)).to(self.device)
         self.dones = torch.zeros((cfg.num_steps, cfg.num_envs)).to(self.device)
         self.values = torch.zeros((cfg.num_steps, cfg.num_envs)).to(self.device)
+        if cfg.action_type == 'continuous' and cfg.adaptive_learning_rate and cfg.policy_name == 'SPO':
+            self.action_means = torch.zeros((cfg.num_steps, cfg.num_envs) + self.act_space.shape).to(self.device)
+            self.action_stds = torch.zeros((cfg.num_steps, cfg.num_envs) + self.act_space.shape).to(self.device)
+        else:
+            self.action_means = None
+            self.action_stds = None
 
         """ Compile Functions """
         self.get_action_and_value = self.agent.get_action_and_value
@@ -122,11 +143,62 @@ class PPO(BaseAgent):
             print("[INFO] Compile PPO update function.")
             mode = "reduce-overhead"
             self.update_step = torch.compile(self.update_step, mode=mode)
-            if cfg.action_type == 'discrete':
+            if cfg.num_steps <= 256:
                 self.get_action_and_value = torch.compile(self.agent.get_action_and_value, mode=mode)
                 self.gae = torch.compile(self.gae, mode=mode)
             else:
                 print("[INFO] Skip compiling policy inference and gae for continuous action PPO to reduce first-iteration compile latency.")
+
+    def warmup_compile(self):
+        cfg: PPOConfig = self.cfg
+        if not cfg.compile or not cfg.compile_warmup:
+            return
+
+        print("[INFO] Warm up compiled PPO functions before training.")
+        model_state = {key: value.detach().clone() for key, value in self.agent.state_dict().items()}
+        optimizer_state = self.optimizer.state_dict()
+        rng_state = torch.random.get_rng_state()
+        cuda_rng_state = torch.cuda.get_rng_state(self.device) if self.device != 'cpu' else None
+
+        try:
+            next_obs = torch.zeros((cfg.num_envs,) + self.obs_space.shape, device=self.device)
+            next_done = torch.zeros(cfg.num_envs, dtype=torch.bool, device=self.device)
+            minibatch = cfg.minibatch_size
+            mb_obs = torch.zeros((minibatch,) + self.obs_space.shape, device=self.device)
+            mb_logprobs = torch.zeros(minibatch, device=self.device)
+            mb_actions = torch.zeros((minibatch,) + self.act_space.shape, device=self.device)
+            mb_advantages = torch.zeros(minibatch, device=self.device)
+            mb_returns = torch.zeros(minibatch, device=self.device)
+            mb_values = torch.zeros(minibatch, device=self.device)
+            mb_action_means = None
+            mb_action_stds = None
+            if self.action_means is not None:
+                mb_action_means = torch.zeros((minibatch,) + self.act_space.shape, device=self.device)
+                mb_action_stds = torch.ones((minibatch,) + self.act_space.shape, device=self.device)
+
+            with torch.no_grad():
+                torch.compiler.cudagraph_mark_step_begin()
+                self.get_action_and_value(self.try_rms(next_obs, normalize=True))
+                torch.compiler.cudagraph_mark_step_begin()
+                self.gae(next_obs, next_done)
+
+            torch.compiler.cudagraph_mark_step_begin()
+            self.update_step(
+                mb_obs,
+                mb_logprobs,
+                mb_actions,
+                mb_advantages,
+                mb_returns,
+                mb_values,
+                mb_action_means,
+                mb_action_stds,
+            )
+        finally:
+            self.agent.load_state_dict(model_state)
+            self.optimizer.load_state_dict(optimizer_state)
+            torch.random.set_rng_state(rng_state)
+            if cuda_rng_state is not None:
+                torch.cuda.set_rng_state(cuda_rng_state, self.device)
     
     def try_rms(self, obs, update=False, normalize=False):
         if self.rms is not None:
@@ -159,12 +231,12 @@ class PPO(BaseAgent):
             returns = advantages + self.values
         return advantages, returns
     
-    def update_step(self, mb_obs, mb_logprobs, mb_actions, mb_advantages, mb_returns, mb_values):
+    def update_step(self, mb_obs, mb_logprobs, mb_actions, mb_advantages, mb_returns, mb_values, mb_action_means=None, mb_action_stds=None):
         cfg: PPOConfig = self.cfg
         if cfg.action_type == 'discrete':
             mb_actions = mb_actions.long()
 
-        _, newlogprob, entropy, newvalue = self.agent.get_action_and_value(mb_obs, mb_actions)
+        _, newlogprob, entropy, newvalue, *extras = self.agent.get_action_and_value(mb_obs, mb_actions)
         logratio = newlogprob - mb_logprobs
         ratio = logratio.exp()
 
@@ -173,6 +245,32 @@ class PPO(BaseAgent):
             old_approx_kl = (-logratio).mean()
             approx_kl = ((ratio - 1) - logratio).mean()
             clipfracs = ((ratio - 1.0).abs() > cfg.clip_coef).float().mean()
+            adaptive_kl = None
+            if (
+                cfg.action_type == 'continuous'
+                and cfg.adaptive_learning_rate
+                and cfg.policy_name == 'SPO'
+                and mb_action_means is not None
+                and mb_action_stds is not None
+                and extras
+                and extras[0] is not None
+            ):
+                new_stats = extras[0]
+                adaptive_kl = compute_gaussian_kld(
+                    mb_action_means,
+                    mb_action_stds,
+                    new_stats["mean"],
+                    new_stats["std"],
+                ).sum(-1).mean()
+                current_lr = float(cfg.learning_rate)
+                if adaptive_kl > cfg.desired_kl * 2.0:
+                    current_lr = max(1e-5, current_lr / 1.5)
+                elif adaptive_kl < cfg.desired_kl / 2.0:
+                    current_lr = min(1e-2, current_lr * 1.5)
+                if current_lr != float(cfg.learning_rate):
+                    cfg.learning_rate = current_lr
+                    for param_group in self.optimizer.param_groups:
+                        param_group["lr"].copy_(torch.tensor(current_lr, device=self.device))
 
         if cfg.norm_adv:
             mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
@@ -210,11 +308,12 @@ class PPO(BaseAgent):
         loss.backward()
         nn.utils.clip_grad_norm_(self.agent.parameters(), cfg.max_grad_norm)
         self.optimizer.step()
-        return pg_loss, v_loss, entropy_loss, old_approx_kl, approx_kl, clipfracs
+        return pg_loss, v_loss, entropy_loss, old_approx_kl, approx_kl, clipfracs, adaptive_kl
 
-    def update(self, b_obs, b_logprobs, b_actions, b_advantages, b_returns, b_values):
+    def update(self, b_obs, b_logprobs, b_actions, b_advantages, b_returns, b_values, b_action_means=None, b_action_stds=None):
         cfg: PPOConfig = self.cfg
         mean_clipfracs, update_count = 0, 0
+        adaptive_kl = None
 
         for epoch in range(cfg.update_epochs):
             cfg.num_train_steps += 1
@@ -222,26 +321,27 @@ class PPO(BaseAgent):
             for mb_inds in minibatches:
 
                 torch.compiler.cudagraph_mark_step_begin()
-                pg_loss, v_loss, entropy_loss, old_approx_kl, approx_kl, clipfracs = self.update_step(
+                pg_loss, v_loss, entropy_loss, old_approx_kl, approx_kl, clipfracs, adaptive_kl = self.update_step(
                     b_obs[mb_inds],
                     b_logprobs[mb_inds],
                     b_actions[mb_inds],
                     b_advantages[mb_inds],
                     b_returns[mb_inds],
                     b_values[mb_inds],
+                    None if b_action_means is None else b_action_means[mb_inds],
+                    None if b_action_stds is None else b_action_stds[mb_inds],
                 )
                 update_count += 1
                 mean_clipfracs += (clipfracs - mean_clipfracs) / update_count
 
             if cfg.target_kl is not None and approx_kl > cfg.target_kl:
                 break
-        return pg_loss, v_loss, entropy_loss, old_approx_kl, approx_kl, mean_clipfracs
+        return pg_loss, v_loss, entropy_loss, old_approx_kl, approx_kl, mean_clipfracs, adaptive_kl
     
     def learn(self):
         cfg: PPOConfig = self.cfg
         envs, logger = self.envs, self.logger
         self.interaction_step = 0
-        fixed_start_time = start_time = time.time()
         last_log_interaction_step = -1
         last_eval_interaction_step = -1
         last_save_interaction_step = -1
@@ -249,6 +349,8 @@ class PPO(BaseAgent):
         train_episodic_returns, train_episodic_lens = [], []  # for logging during training
 
         """ Training """
+        self.warmup_compile()
+        fixed_start_time = start_time = time.time()
         next_obs, _ = envs.reset()
         self.try_rms(next_obs, update=True)
         next_obs = torch.as_tensor(next_obs, device=self.device)
@@ -274,8 +376,13 @@ class PPO(BaseAgent):
                 # ALGO LOGIC: action logic
                 with torch.no_grad():
                     torch.compiler.cudagraph_mark_step_begin()
-                    action, logprob, _, value = self.get_action_and_value(self.try_rms(next_obs, normalize=True))
+                    action, logprob, _, value, *extras = self.get_action_and_value(
+                        self.try_rms(next_obs, normalize=True)
+                    )
                     self.values[step] = value.flatten()
+                    if self.action_means is not None and extras and extras[0] is not None:
+                        self.action_means[step] = extras[0]["mean"]
+                        self.action_stds[step] = extras[0]["std"]
                 self.actions[step] = action
                 self.logprobs[step] = logprob
 
@@ -306,9 +413,13 @@ class PPO(BaseAgent):
             b_advantages = advantages.reshape(-1)
             b_returns = returns.reshape(-1)
             b_values = self.values.reshape(-1)
+            b_action_means = None if self.action_means is None else self.action_means.reshape(cfg.batch_size, -1)
+            b_action_stds = None if self.action_stds is None else self.action_stds.reshape(cfg.batch_size, -1)
 
             torch.compiler.cudagraph_mark_step_begin()
-            pg_loss, v_loss, entropy_loss, old_approx_kl, approx_kl, clipfracs = self.update(b_obs, b_logprobs, b_actions, b_advantages, b_returns, b_values)
+            pg_loss, v_loss, entropy_loss, old_approx_kl, approx_kl, clipfracs, adaptive_kl = self.update(
+                b_obs, b_logprobs, b_actions, b_advantages, b_returns, b_values, b_action_means, b_action_stds
+            )
 
             y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
             var_y = np.var(y_true)
@@ -337,6 +448,8 @@ class PPO(BaseAgent):
                         "charts/train_episodic_length": np.mean(train_episodic_lens)
                     })
                     train_episodic_returns, train_episodic_lens = [], []
+                if adaptive_kl is not None:
+                    logs["diagnostics/adaptive_kl"] = adaptive_kl.item()
                 for name, value in logs.items():
                     self.logger.add_scalar(name, value, cfg.num_env_steps)
                 if cfg.verbose == 1 and time.time() - last_verbose_time > 10:
@@ -380,4 +493,3 @@ class PPO(BaseAgent):
         self.agent.load_state_dict(data['agent'])
         print(f"[INFO] Load PPO model from {path} successfully.")
         return self
-

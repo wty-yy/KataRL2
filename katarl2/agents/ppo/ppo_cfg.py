@@ -11,7 +11,11 @@ class PPODiscreteConfig(BaseAgentConfig):
     # Action type
     action_type: Literal['discrete', 'continuous'] = 'discrete'
     # Network name
-    network_name: Literal['CNN+MLP', 'MLP'] = 'CNN+MLP'
+    network_name: Literal['CNN+MLP', 'MLP', 'RESNET+MLP'] = 'CNN+MLP'
+    # Use the deeper ResNet encoder for Atari.
+    use_resnet: bool = False
+    # Run one compile warmup pass before timed training starts when compile is enabled.
+    compile_warmup: bool = True
 
     """ Training / Evaluating """
     # Total environment steps
@@ -62,6 +66,10 @@ class PPODiscreteConfig(BaseAgentConfig):
     weight_decay: float = 0.0
     optimizer: Literal['adam', 'adamw'] = 'adam'
 
+    def __post_init__(self):
+        if self.action_type == 'discrete':
+            self.network_name = 'RESNET+MLP' if self.use_resnet else 'CNN+MLP'
+
 
 @dataclass
 class PPOContinuousConfig(PPODiscreteConfig):
@@ -83,18 +91,34 @@ class PPOContinuousConfig(PPODiscreteConfig):
     clip_coef: float = 0.2
     # coefficient of the entropy
     ent_coef: float = 0.0
+    # Actor depth.
+    policy_layers: Literal[3, 7] = 3
+    # Whether to adapt the learning rate using the policy KL.
+    adaptive_learning_rate: bool = False
+    # Target KL used by the adaptive learning rate controller.
+    desired_kl: float = 0.01
 
 
 @dataclass
 class SPODiscreteConfig(PPODiscreteConfig):
     # Policy name
-    policy_name: Literal['Basic', 'Simba', 'SPO'] = 'SPO'
+    policy_name: Literal['SPO'] = 'SPO'
+    network_name: Literal['RESNET+MLP'] = 'RESNET+MLP'
+    total_env_steps: int = int(4e7)
+    clip_coef: float = 0.2
+    use_resnet: bool = True
 
 
 @dataclass
 class SPOContinuousConfig(PPOContinuousConfig):
     # Policy name
-    policy_name: Literal['Basic', 'Simba', 'SPO'] = 'SPO'
+    policy_name: Literal['SPO'] = 'SPO'
+    total_env_steps: int = int(1e7)
+    num_steps: int = 256
+    num_minibatches: int = 4
+    policy_layers: Literal[3, 7] = 7
+    anneal_lr: bool = False
+    adaptive_learning_rate: bool = True
 
 @dataclass
 class SimbaPPOContinuousConfig(PPOContinuousConfig):

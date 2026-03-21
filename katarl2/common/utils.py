@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from torch import nn
 
 def apply_fn_dict(d: dict, fn) -> dict:
     """ 对字典的每个value递归地应用函数fn """
@@ -33,6 +34,12 @@ def cvt_string_time(t_sec) -> str:
     if hours > 0:
         return f"{hours:02}:{minutes:02}:{seconds:02}"
     return f"{minutes:02}:{seconds:02}"
+
+def count_parameters(module: nn.Module) -> tuple[int, int]:
+    """Return total and trainable parameter counts for a torch module."""
+    total_params = sum(param.numel() for param in module.parameters())
+    trainable_params = sum(param.numel() for param in module.parameters() if param.requires_grad)
+    return total_params, trainable_params
 
 if __name__ == '__main__':
     """ debug flatten_dict """

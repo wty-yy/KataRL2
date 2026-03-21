@@ -45,6 +45,9 @@ class Algo:
 3. 离散策略分布路径相对更稳定，因此`get_action_and_value`收益更容易体现
 
 测试指令如下
+<details>
+<summary>展开测试指令</summary>
+
 ```bash
 CUDA_VISIBLE_DEVICES=0 python ./demos/ppo.py agent:disc env:envpool-atari --env.env-name Pong-v5 --agent.total-env-steps 1000000 --agent.verbose 2 --debug \
   --agent.compile \
@@ -53,6 +56,8 @@ CUDA_VISIBLE_DEVICES=0 python ./demos/ppo.py agent:disc env:envpool-atari --env.
   --env.num-eval-envs 1 \
   --agent.save-per-interaction-step 0
 ```
+
+</details>
 
 测试结果如下
 | gae | get_action_and_value | update_step | 训练用时 | 提升比例 |
@@ -75,6 +80,9 @@ CUDA_VISIBLE_DEVICES=0 python ./demos/ppo.py agent:disc env:envpool-atari --env.
 `get_action_and_value`和`gae`在连续动作中不是“死锁”或“真的卡住”，而是首轮compile成本较高，体感上像卡住，因此benchmark里默认不打开这两部分的编译。
 
 测试指令如下
+<details>
+<summary>展开测试指令</summary>
+
 ```bash
 CUDA_VISIBLE_DEVICES=0 python ./demos/ppo.py agent:cont env:dmc \
   --env.env-name walker-walk \
@@ -88,6 +96,8 @@ CUDA_VISIBLE_DEVICES=0 python ./demos/ppo.py agent:cont env:dmc \
   --agent.save-per-interaction-step 0
 ```
 
+</details>
+
 测试结果如下
 | gae | get_action_and_value | update_step | 训练用时 | 提升比例 |
 | --- | --- | --- | --- | --- |
@@ -98,3 +108,68 @@ CUDA_VISIBLE_DEVICES=0 python ./demos/ppo.py agent:cont env:dmc \
 1. `update_step`是最值得优先编译的部分，因为它调用频率高，且包含loss、反向传播和optimizer step
 2. 离散动作中，`get_action_and_value`通常也值得编译
 3. 连续动作中，`get_action_and_value`和`gae`未必值得编译，尤其是在`num_envs`较少、`num_steps`较大的配置下
+
+## SPO
+SPO是PPO的一个变体，主要区别在于它使用了更深的ResNet编码器，损失函数，动态调整lr，并行环境8envs，num_steps=256
+
+
+<details>
+<summary>展开网络参数量</summary>
+
+```bash
+# CNN
+[INFO] Parameters: total=1,687,719, trainable=1,687,719
+
+# ResNet-18
+[INFO] Parameters: total=11,436,295, trainable=11,436,295
+```
+
+</details>
+
+### 离散动作
+测试指令如下
+<details>
+<summary>展开测试指令</summary>
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python ./demos/ppo.py agent:disc-spo env:envpool-atari-spo --env.env-name Pong-v5 --agent.total-env-steps 1000000 --agent.verbose 2 --debug \
+  --agent.compile \
+  --agent.eval-per-interaction-step 100000000 \
+  --agent.num-eval-episodes 1 \
+  --env.num-eval-envs 1 \
+  --agent.save-per-interaction-step 0
+```
+
+</details>
+
+测试结果如下
+| gae | get_action_and_value | update_step | 训练用时 | 提升比例 |
+| --- | --- | --- | --- | --- |
+| ❌ | ❌ | ❌ | 3m16s | +0.0% |
+| ✅ | ✅ | ✅ | 2m09s | +51.9% |
+
+### 连续动作
+测试指令如下
+<details>
+<summary>展开测试指令</summary>
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python ./demos/ppo.py agent:cont-spo env:gym-mujoco-spo \
+  --env.env-name Hopper-v4 \
+  --agent.total-env-steps 200000 \
+  --agent.verbose 2 \
+  --debug \
+  --agent.compile \
+  --agent.eval-per-interaction-step 100000000 \
+  --agent.num-eval-episodes 1 \
+  --env.num-eval-envs 1 \
+  --agent.save-per-interaction-step 0
+```
+
+</details>
+
+测试结果如下
+| gae | get_action_and_value | update_step | 训练用时 | 提升比例 |
+| --- | --- | --- | --- | --- |
+| ❌ | ❌ | ❌ | 1m39s | +0.0% |
+| ✅ | ✅ | ✅ | 1m12s | +37.5% |

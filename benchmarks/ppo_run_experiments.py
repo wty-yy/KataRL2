@@ -80,7 +80,7 @@ base_cmd = [
     "python", "-u", "demos/ppo.py",
 ]
 
-print(f"Start tasks: {base_cmd+extra_args=}")
+print(f"Start tasks: {base_cmd+extra_args=}, {ppo_type=}")
 pprint(tasks)
 if sleep_time > 0:
     print("Sleep for time: ", cvt_string_time(sleep_time))
@@ -101,12 +101,12 @@ if __name__ == "__main__":
                 "--env.env-name", env_name,
                 "--env.seed", str(seed),
                 "--agent.seed", str(seed),
-                "--agent.device", f"cuda:{cuda_id}",
+                "--agent.device", "cuda:0",
             ] + extra_args
 
             # 用 nohup 启动并输出到对应 log 文件
             log_file = str(PATH_NOHUP_OUT_DIR / f"{ppo_type}_ppo_{env_subcommand}_{env_name}_seed{seed}_{time.strftime('%Y%m%d_%H%M%S')}.log")
-            full_cmd = ["nohup"] + cmd + [">", log_file, "2>&1", "&", "echo", "$!"]
+            full_cmd = ["CUDA_VISIBLE_DEVICES=" + str(cuda_id), "nohup"] + cmd + [">", log_file, "2>&1", "&", "echo", "$!"]
             pid = subprocess.check_output(" ".join(full_cmd), shell=True).decode().strip()
             # os.system(" ".join(full_cmd))
             print(f"[Start PID={pid}]: '{' '.join(full_cmd)}'")
