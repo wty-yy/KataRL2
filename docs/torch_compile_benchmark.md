@@ -68,6 +68,8 @@ CUDA_VISIBLE_DEVICES=0 python ./demos/ppo.py agent:disc env:envpool-atari --env.
 | ✅ | ❌ | ✅ | 1m15s | +20.0% |
 | ✅ | ✅ | ✅ | 49s | +83.7% |
 
+其中“提升比例”统一按 `(未编译耗时 / 当前耗时 - 1) * 100%` 计算。
+
 ### 连续动作
 在连续动作PPO中，更推荐优先只编译`update_step`。
 
@@ -146,7 +148,7 @@ CUDA_VISIBLE_DEVICES=0 python ./demos/ppo.py agent:disc-spo env:envpool-atari-sp
 | gae | get_action_and_value | update_step | 训练用时 | 提升比例 |
 | --- | --- | --- | --- | --- |
 | ❌ | ❌ | ❌ | 3m16s | +0.0% |
-| ✅ | ✅ | ✅ | 2m09s | +51.9% |
+| ✅ | ✅ | ✅ | 1m55s | +70.4% |
 
 ### 连续动作
 测试指令如下
@@ -168,8 +170,10 @@ CUDA_VISIBLE_DEVICES=0 python ./demos/ppo.py agent:cont-spo env:gym-mujoco-spo \
 
 </details>
 
-测试结果如下
-| gae | get_action_and_value | update_step | 训练用时 | 提升比例 |
-| --- | --- | --- | --- | --- |
-| ❌ | ❌ | ❌ | 1m39s | +0.0% |
-| ✅ | ✅ | ✅ | 1m12s | +37.5% |
+测试结果如下（gym未编译作为基线）：
+env_suit | gae | get_action_and_value | update_step | 训练用时 | 提升比例 |
+| --- | --- | --- | --- | --- | --- |
+| gym | ❌ | ❌ | ❌ | 1m39s | +0.0% |
+| gym | ✅ | ✅ | ✅ | 1m12s | +37.5% |
+| envpool | ❌ | ❌ | ❌ | 29s | +241.4% |
+| envpool | ✅ | ✅ | ✅ | 16s | +518.8% |

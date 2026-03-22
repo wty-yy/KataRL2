@@ -38,6 +38,21 @@ def compute_gaussian_kld(mu_1, sigma_1, mu_2, sigma_2):
         (mu_1 - mu_2).square() + sigma_1.square() - sigma_2.square()
     ) / (2 * sigma_2.square())
 
+
+def compile_with_cudagraph_mark(func, *, enable: bool, device: str, **kwargs):
+    if not enable:
+        return func
+
+    compiled_func = torch.compile(func, **kwargs)
+    if device == 'cpu':
+        return compiled_func
+
+    def wrapped(*args, **kwargs2):
+        torch.compiler.cudagraph_mark_step_begin()
+        return compiled_func(*args, **kwargs2)
+
+    return wrapped
+
 class PPO(BaseAgent):
     def __init__(
             self, *,
@@ -142,12 +157,40 @@ class PPO(BaseAgent):
         if cfg.compile:
             print("[INFO] Compile PPO update function.")
             mode = "reduce-overhead"
-            self.update_step = torch.compile(self.update_step, mode=mode)
+            self.update_step = compile_with_cudagraph_mark(
+                self.update_step, enable=True, device=self.device, mode=mode
+            )
             if cfg.num_steps <= 256:
-                self.get_action_and_value = torch.compile(self.agent.get_action_and_value, mode=mode)
-                self.gae = torch.compile(self.gae, mode=mode)
+                self.get_action_and_value = compile_with_cudagraph_mark(
+                    self.agent.get_action_and_value, enable=True, device=self.device, mode=mode
+                )
+                self.gae = compile_with_cudagraph_mark(
+                    self.gae, enable=True, device=self.device, mode=mode
+                )
             else:
                 print("[INFO] Skip compiling policy inference and gae for continuous action PPO to reduce first-iteration compile latency.")
+
+    def apply_adaptive_learning_rate(self, adaptive_kl):  # Conditional modification of non-graph parameter (lr)
+        cfg: PPOConfig = self.cfg
+        if (
+            adaptive_kl is None
+            or cfg.action_type != 'continuous'
+            or not cfg.adaptive_learning_rate
+            or cfg.policy_name != 'SPO'
+        ):
+            return
+
+        adaptive_kl_value = float(adaptive_kl.item() if isinstance(adaptive_kl, torch.Tensor) else adaptive_kl)
+        current_lr = float(self.optimizer.param_groups[0]["lr"])
+        if adaptive_kl_value > cfg.desired_kl * 2.0:
+            current_lr = max(1e-5, current_lr / 1.5)
+        elif adaptive_kl_value < cfg.desired_kl / 2.0:
+            current_lr = min(1e-2, current_lr * 1.5)
+
+        if current_lr != float(self.optimizer.param_groups[0]["lr"]):
+            lr_tensor = torch.tensor(current_lr, device=self.device)
+            for param_group in self.optimizer.param_groups:
+                param_group["lr"].copy_(lr_tensor)
 
     def warmup_compile(self):
         cfg: PPOConfig = self.cfg
@@ -177,12 +220,9 @@ class PPO(BaseAgent):
                 mb_action_stds = torch.ones((minibatch,) + self.act_space.shape, device=self.device)
 
             with torch.no_grad():
-                torch.compiler.cudagraph_mark_step_begin()
                 self.get_action_and_value(self.try_rms(next_obs, normalize=True))
-                torch.compiler.cudagraph_mark_step_begin()
                 self.gae(next_obs, next_done)
 
-            torch.compiler.cudagraph_mark_step_begin()
             self.update_step(
                 mb_obs,
                 mb_logprobs,
@@ -208,7 +248,6 @@ class PPO(BaseAgent):
 
     def predict(self, obs: np.ndarray):
         obs = self.try_rms(obs, normalize=True)
-        torch.compiler.cudagraph_mark_step_begin()
         action = self.get_action_and_value(torch.as_tensor(obs, device=self.device), train=False)[0]
         return action.detach().cpu().numpy()
     
@@ -246,6 +285,7 @@ class PPO(BaseAgent):
             approx_kl = ((ratio - 1) - logratio).mean()
             clipfracs = ((ratio - 1.0).abs() > cfg.clip_coef).float().mean()
             adaptive_kl = None
+            aspo_positive_frac = None
             if (
                 cfg.action_type == 'continuous'
                 and cfg.adaptive_learning_rate
@@ -262,15 +302,6 @@ class PPO(BaseAgent):
                     new_stats["mean"],
                     new_stats["std"],
                 ).sum(-1).mean()
-                current_lr = float(cfg.learning_rate)
-                if adaptive_kl > cfg.desired_kl * 2.0:
-                    current_lr = max(1e-5, current_lr / 1.5)
-                elif adaptive_kl < cfg.desired_kl / 2.0:
-                    current_lr = min(1e-2, current_lr * 1.5)
-                if current_lr != float(cfg.learning_rate):
-                    cfg.learning_rate = current_lr
-                    for param_group in self.optimizer.param_groups:
-                        param_group["lr"].copy_(torch.tensor(current_lr, device=self.device))
 
         if cfg.norm_adv:
             mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
@@ -280,7 +311,16 @@ class PPO(BaseAgent):
             # Simple Policy Optimization replaces PPO clipping with a
             # quadratic penalty around ratio=1 whose strength depends on |A|.
             spo_objective = ratio * mb_advantages - mb_advantages.abs() * (ratio - 1).square() / (2 * cfg.clip_coef)
-            pg_loss = -spo_objective.mean()
+            if getattr(cfg, "use_asymmetric_spo", False):
+                aspo_positive_frac = (mb_advantages >= 0).float().mean()
+                ppo_objective = torch.min(
+                    ratio * mb_advantages,
+                    torch.clamp(ratio, 1 - cfg.clip_coef, 1 + cfg.clip_coef) * mb_advantages,
+                )
+                aspo_objective = torch.where(mb_advantages >= 0, ppo_objective, spo_objective)
+                pg_loss = -aspo_objective.mean()
+            else:
+                pg_loss = -spo_objective.mean()
         else:
             pg_loss1 = -mb_advantages * ratio
             pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - cfg.clip_coef, 1 + cfg.clip_coef)
@@ -308,20 +348,19 @@ class PPO(BaseAgent):
         loss.backward()
         nn.utils.clip_grad_norm_(self.agent.parameters(), cfg.max_grad_norm)
         self.optimizer.step()
-        return pg_loss, v_loss, entropy_loss, old_approx_kl, approx_kl, clipfracs, adaptive_kl
+        return pg_loss, v_loss, entropy_loss, old_approx_kl, approx_kl, clipfracs, adaptive_kl, aspo_positive_frac
 
     def update(self, b_obs, b_logprobs, b_actions, b_advantages, b_returns, b_values, b_action_means=None, b_action_stds=None):
         cfg: PPOConfig = self.cfg
         mean_clipfracs, update_count = 0, 0
         adaptive_kl = None
+        aspo_positive_frac = None
 
         for epoch in range(cfg.update_epochs):
             cfg.num_train_steps += 1
             minibatches = torch.randperm(cfg.batch_size, device=self.device).split(cfg.minibatch_size)
             for mb_inds in minibatches:
-
-                torch.compiler.cudagraph_mark_step_begin()
-                pg_loss, v_loss, entropy_loss, old_approx_kl, approx_kl, clipfracs, adaptive_kl = self.update_step(
+                pg_loss, v_loss, entropy_loss, old_approx_kl, approx_kl, clipfracs, adaptive_kl, aspo_positive_frac = self.update_step(
                     b_obs[mb_inds],
                     b_logprobs[mb_inds],
                     b_actions[mb_inds],
@@ -331,12 +370,13 @@ class PPO(BaseAgent):
                     None if b_action_means is None else b_action_means[mb_inds],
                     None if b_action_stds is None else b_action_stds[mb_inds],
                 )
+                self.apply_adaptive_learning_rate(adaptive_kl)
                 update_count += 1
                 mean_clipfracs += (clipfracs - mean_clipfracs) / update_count
 
             if cfg.target_kl is not None and approx_kl > cfg.target_kl:
                 break
-        return pg_loss, v_loss, entropy_loss, old_approx_kl, approx_kl, mean_clipfracs, adaptive_kl
+        return pg_loss, v_loss, entropy_loss, old_approx_kl, approx_kl, mean_clipfracs, adaptive_kl, aspo_positive_frac
     
     def learn(self):
         cfg: PPOConfig = self.cfg
@@ -363,8 +403,10 @@ class PPO(BaseAgent):
             # Annealing the rate if instructed to do so.
             if cfg.anneal_lr:
                 frac = 1.0 - (iteration - 1.0) / cfg.num_iterations
-                lrnow = frac * cfg.learning_rate
-                self.optimizer.param_groups[0]["lr"].copy_(lrnow)
+                lrnow = cfg.learning_rate * frac
+                lr_tensor = torch.tensor(lrnow, device=self.device)
+                for param_group in self.optimizer.param_groups:
+                    param_group["lr"].copy_(lr_tensor)
 
             for step in range(0, cfg.num_steps):
                 cfg.num_env_steps += cfg.num_envs * self.env_cfg.action_repeat
@@ -375,7 +417,6 @@ class PPO(BaseAgent):
 
                 # ALGO LOGIC: action logic
                 with torch.no_grad():
-                    torch.compiler.cudagraph_mark_step_begin()
                     action, logprob, _, value, *extras = self.get_action_and_value(
                         self.try_rms(next_obs, normalize=True)
                     )
@@ -400,7 +441,6 @@ class PPO(BaseAgent):
                     train_episodic_returns.extend(final_info['episode']['r'][mask].tolist())
                     train_episodic_lens.extend(final_info['episode']['l'][mask].tolist())
 
-            torch.compiler.cudagraph_mark_step_begin()
             advantages, returns = self.gae(next_obs, next_done)
             advantages = advantages.clone()
             returns = returns.clone()
@@ -416,8 +456,7 @@ class PPO(BaseAgent):
             b_action_means = None if self.action_means is None else self.action_means.reshape(cfg.batch_size, -1)
             b_action_stds = None if self.action_stds is None else self.action_stds.reshape(cfg.batch_size, -1)
 
-            torch.compiler.cudagraph_mark_step_begin()
-            pg_loss, v_loss, entropy_loss, old_approx_kl, approx_kl, clipfracs, adaptive_kl = self.update(
+            pg_loss, v_loss, entropy_loss, old_approx_kl, approx_kl, clipfracs, adaptive_kl, aspo_positive_frac = self.update(
                 b_obs, b_logprobs, b_actions, b_advantages, b_returns, b_values, b_action_means, b_action_stds
             )
 
@@ -450,6 +489,8 @@ class PPO(BaseAgent):
                     train_episodic_returns, train_episodic_lens = [], []
                 if adaptive_kl is not None:
                     logs["diagnostics/adaptive_kl"] = adaptive_kl.item()
+                if aspo_positive_frac is not None:
+                    logs["diagnostics/aspo_positive_frac"] = aspo_positive_frac.item()
                 for name, value in logs.items():
                     self.logger.add_scalar(name, value, cfg.num_env_steps)
                 if cfg.verbose == 1 and time.time() - last_verbose_time > 10:
@@ -487,8 +528,14 @@ class PPO(BaseAgent):
 
     @classmethod
     def load(cls, path: str | Path, device: str | torch.device):
-        data = torch.load(str(path), map_location=device, weights_only=False)
-        data['config'].device = device
+        requested_device = str(device)
+        load_device = requested_device
+        if 'cuda' in requested_device and not torch.cuda.is_available():
+            load_device = 'cpu'
+            print(f"[WARNING] CUDA is unavailable when loading {path}, fallback to CPU.")
+
+        data = torch.load(str(path), map_location=load_device, weights_only=False)
+        data['config'].device = load_device
         self = cls(cfg=data['config'], env_cfg=data['env_config'])
         self.agent.load_state_dict(data['agent'])
         print(f"[INFO] Load PPO model from {path} successfully.")

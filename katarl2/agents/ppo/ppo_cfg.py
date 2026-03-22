@@ -107,6 +107,8 @@ class SPODiscreteConfig(PPODiscreteConfig):
     total_env_steps: int = int(4e7)
     clip_coef: float = 0.2
     use_resnet: bool = True
+    # Use ASPO (http://arxiv.org/abs/2602.02481): PPO clipping for non-negative advantages, SPO for negative advantages.
+    use_asymmetric_spo: bool = False
 
 
 @dataclass
@@ -119,6 +121,8 @@ class SPOContinuousConfig(PPOContinuousConfig):
     policy_layers: Literal[3, 7] = 7
     anneal_lr: bool = False
     adaptive_learning_rate: bool = True
+    # Use ASPO: PPO clipping for non-negative advantages, SPO for negative advantages.
+    use_asymmetric_spo: bool = False
 
 @dataclass
 class SimbaPPOContinuousConfig(PPOContinuousConfig):

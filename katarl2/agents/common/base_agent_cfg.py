@@ -69,6 +69,8 @@ class BaseAgentConfig:
 def get_full_policy_name(cfg: BaseAgentConfig) -> str:
     network_name = cfg.network_name.lower()
     name = f"{cfg.policy_name.lower()}_{cfg.action_type.lower()}_{network_name}"
+    if cfg.policy_name.lower() == 'spo' and getattr(cfg, 'use_asymmetric_spo', False):
+        name = name.replace('spo_', 'aspo_', 1)
     if cfg.algo_name.lower() == 'ppo' and cfg.policy_name.lower() in ('basic', 'spo'):
         if cfg.action_type == 'continuous' and hasattr(cfg, 'policy_layers'):
             name += f'_{cfg.policy_layers}l'

@@ -9,10 +9,13 @@ python ./demos/ppo.py agent:disc-spo env:envpool-atari-spo --env.env-name Pong-v
 python ./demos/ppo.py agent:disc-simba env:envpool-atari-simba --env.env-name Pong-v5 --agent.total-env-steps 100000 --agent.verbose 2 --debug
 python ./demos/ppo.py agent:disc-simba env:gym-atari-simba --env.env-name Pong-v5 --agent.total-env-steps 100000 --agent.verbose 2 --debug
 python ./demos/ppo.py agent:cont env:gym-mujoco --env.env-name Hopper-v4 --agent.total-env-steps 100000 --agent.verbose 2 --debug
+python ./demos/ppo.py agent:cont env:envpool-mujoco --env.env-name Hopper-v4 --agent.total-env-steps 100000 --agent.verbose 2 --debug
 python ./demos/ppo.py agent:cont env:dmc --env.env-name walker-walk --agent.total-env-steps 100000 --agent.verbose 2 --debug
 python ./demos/ppo.py agent:cont-spo env:gym-mujoco-spo --env.env-name Hopper-v4 --agent.total-env-steps 100000 --agent.verbose 2 --debug
+python ./demos/ppo.py agent:cont-spo env:envpool-mujoco-spo --env.env-name Hopper-v4 --agent.total-env-steps 100000 --agent.verbose 2 --debug
 python ./demos/ppo.py agent:cont-spo env:dmc-spo --env.env-name walker-walk --agent.total-env-steps 100000 --agent.verbose 2 --debug
 python ./demos/ppo.py agent:cont-simba env:gym-mujoco-simba --env.env-name Hopper-v4 --agent.total-env-steps 100000 --agent.verbose 2 --debug
+python ./demos/ppo.py agent:cont-simba env:envpool-mujoco-simba --env.env-name Hopper-v4 --agent.total-env-steps 100000 --agent.verbose 2 --debug
 python ./demos/ppo.py agent:cont-simba env:dmc-simba --env.env-name walker-walk --agent.total-env-steps 100000 --agent.verbose 2 --debug
 """
 import sys
@@ -37,10 +40,10 @@ from katarl2.agents import (
 )
 from katarl2.agents.ppo.ppo_env_cfg import (
     PPOEnvpoolAtariEnvConfig, PPOGymAtariEnvConfig,
-    PPODMCEnvConfig, PPOGymMujocoEnvConfig,
+    PPODMCEnvConfig, PPOGymMujocoEnvConfig, PPOEnvpoolMujocoEnvConfig,
     SPOEnvpoolAtariEnvConfig, SPOGymAtariEnvConfig,
-    SPODMCEnvConfig, SPOGymMujocoEnvConfig,
-    SimbaPPODMCEnvConfig, SimbaPPOGymMujocoEnvConfig
+    SPODMCEnvConfig, SPOGymMujocoEnvConfig, SPOEnvpoolMujocoEnvConfig,
+    SimbaPPODMCEnvConfig, SimbaPPOGymMujocoEnvConfig, SimbaPPOEnvpoolMujocoEnvConfig
 )
 from katarl2.common.logger import LogConfig, get_tensorboard_writer
 from katarl2.envs.env_maker import make_envs
@@ -68,11 +71,15 @@ def _auto_align_env_cfg(agent_cfg, env_cfg):
             target_cls = SPOGymAtariEnvConfig
         elif isinstance(env_cfg, PPOGymMujocoEnvConfig):
             target_cls = SPOGymMujocoEnvConfig
+        elif isinstance(env_cfg, PPOEnvpoolMujocoEnvConfig):
+            target_cls = SPOEnvpoolMujocoEnvConfig
         elif isinstance(env_cfg, PPODMCEnvConfig):
             target_cls = SPODMCEnvConfig
     elif policy_name == 'Simba':
         if isinstance(env_cfg, PPOGymMujocoEnvConfig):
             target_cls = SimbaPPOGymMujocoEnvConfig
+        elif isinstance(env_cfg, PPOEnvpoolMujocoEnvConfig):
+            target_cls = SimbaPPOEnvpoolMujocoEnvConfig
         elif isinstance(env_cfg, PPODMCEnvConfig):
             target_cls = SimbaPPODMCEnvConfig
 
@@ -102,16 +109,19 @@ class Args:
         # Env Basic Config
         Annotated[PPODMCEnvConfig, tyro.conf.subcommand('dmc')],
         Annotated[PPOGymMujocoEnvConfig, tyro.conf.subcommand('gym-mujoco')],
+        Annotated[PPOEnvpoolMujocoEnvConfig, tyro.conf.subcommand('envpool-mujoco')],
         Annotated[PPOEnvpoolAtariEnvConfig, tyro.conf.subcommand('envpool-atari')],
         Annotated[PPOGymAtariEnvConfig, tyro.conf.subcommand('gym-atari')],
         # Env SPO Config
         Annotated[SPODMCEnvConfig, tyro.conf.subcommand('dmc-spo')],
         Annotated[SPOGymMujocoEnvConfig, tyro.conf.subcommand('gym-mujoco-spo')],
+        Annotated[SPOEnvpoolMujocoEnvConfig, tyro.conf.subcommand('envpool-mujoco-spo')],
         Annotated[SPOEnvpoolAtariEnvConfig, tyro.conf.subcommand('envpool-atari-spo')],
         Annotated[SPOGymAtariEnvConfig, tyro.conf.subcommand('gym-atari-spo')],
         # Env Simba Config
         Annotated[SimbaPPODMCEnvConfig, tyro.conf.subcommand('dmc-simba')],
         Annotated[SimbaPPOGymMujocoEnvConfig, tyro.conf.subcommand('gym-mujoco-simba')],
+        Annotated[SimbaPPOEnvpoolMujocoEnvConfig, tyro.conf.subcommand('envpool-mujoco-simba')],
         Annotated[PPOEnvpoolAtariEnvConfig, tyro.conf.subcommand('envpool-atari-simba')],  # same
         Annotated[PPOGymAtariEnvConfig, tyro.conf.subcommand('gym-atari-simba')],  # same
     ]
@@ -142,7 +152,8 @@ if __name__ == '__main__':
     agent = PPO.load(path_ckpt, args.agent.device)
     if args.env.env_type == 'envpool':
         args.env.env_type = 'gymnasium'  # Render in gymnasium suite
-        args.env.atari_wrappers = True  # Render with atari wrappers
+        if hasattr(args.env, 'atari_wrappers'):
+            args.env.atari_wrappers = True  # Render with atari wrappers
     args.env.num_eval_envs = 1
     args.env.capture_video = True
     agent.cfg.num_eval_episodes = 1

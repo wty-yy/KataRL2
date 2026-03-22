@@ -42,7 +42,8 @@ if __name__ == '__main__':
     path_manager._PATH_LOGS = Path("./logs/debug")  # 临时存储
     if env_cfg.env_type == 'envpool':
         env_cfg.env_type = 'gymnasium'  # Render in gymnasium suite
-        env_cfg.atari_wrappers = True  # Render with atari wrappers
+        if hasattr(env_cfg, 'atari_wrappers'):
+            env_cfg.atari_wrappers = True  # Render with atari wrappers
     envs, eval_envs = make_envs(env_cfg)  # 使用agent.env_cfg可以读取之前存储的RMS信息
     agent.eval_envs = eval_envs  # 配置验证环境
 

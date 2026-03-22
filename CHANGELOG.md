@@ -3,6 +3,13 @@
 - [ ] 加入对sac, simba, simbav2的速度提升
 - [ ] 加入对q loss的测试, twohot, hl_gauss
 
+## v0.7.2 (20260322)
+1. 加入envpool.mujoco，8 envs并行速度相比gym提升2.4倍
+2. spo算法除了最大训练步数以外全部都已经和官方对齐了，但是目前表现明显还不是全面超越ppo，在Boxing, Enduro, Seaquest, UpNDown, WizardOfWor上表现非常差，有些几乎没有性能，原论文中只在ResNet18下同时比对了ppo和spo，但是ppo在ResNet18的表现本来不好，在CNN反而效果更好些，因此没有什么参考价值了
+3. 引入aspo，在使用spo时加上`--agent.use-asymmetric-spo`选项即可打开，adv正向时使用ppo，负向时使用spo，并在tensorboard中加入`diagnostics/aspo_positive_frac`判断adv>=0的占比（使用ppo损失）
+
+P.S. 本来在测试episodic_life=False，并把lr固定在1e-4，结果直接全部环境没有任何性能，非常奇怪，还是退回到之前的版本，episodic_life=True，anneal_lr从2.5e-4 -> 0
+
 ## v0.7.1 (20260321)
 1. 参考 `Simple-Policy-Optimization` 对 `SPO` 做进一步对齐，并将变更限制在 `SPODiscreteConfig` / `SPOContinuousConfig` 上，不再污染原始 `PPO` 默认配置
 2. 为 `SPO` 新增独立环境配置：Atari、Gym Mujoco、DMC 都拆出 `*-spo` 版本，并保留 `Simba` 独立环境配置

@@ -25,7 +25,7 @@ Directory layout expected (example):
 └── ppo/
      └── ...
 
-Usage: (details see assets/figures/plot_commands.md)
+Usage: (details see ./docs/plot_commands.md)
 python ./demos/common/plot_tb_graphs.py --avail-algos ppo sac
 python ./demos/common/plot_tb_graphs.py --avail-algos ppo sac --ignore-env-suit-name
 python ./demos/common/plot_tb_graphs.py --avail-algos ppo --ignore-env-suit-name --avail-suits envpool --avail-envs Breakout-v5

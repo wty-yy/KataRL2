@@ -74,7 +74,7 @@ pip install -r requirements/requirements.txt
 1. `mujoco.FatalError: an OpenGL platform library has not been loaded into this process, this most likely means that a valid OpenGL context has not been created before mjr_makeContext was called`, 设置环境变量`conda env config vars set MUJOCO_GL=egl`, 重启`conda`环境即可
 
 ## 完成的实验
-以下图片均由[plot_tb_graphs.py](./demos/common/plot_tb_graphs.py)和[plot_tb_graphs_compare_env_suits](./demos/common/plot_tb_graphs_compare_env_suits.py)完成, 绘制命令请见[plot_commands.md](./assets/figures/plot_commands.md)
+以下图片均由[plot_tb_graphs.py](./demos/common/plot_tb_graphs.py)和[plot_tb_graphs_compare_env_suits](./demos/common/plot_tb_graphs_compare_env_suits.py)完成, 绘制命令请见[plot_commands.md](./docs/plot_commands.md)
 ### PPO vs Simba
 <details>
     <summary>atari</summary>
